@@ -25,5 +25,13 @@
       "matches": ["https://mail.google.com/*"], 
       "js": ["content.js"]
     }
-  ]
+  ],
+    "oauth2": {
+      "client_id": "496624467603-ub215esr0vep74g14lf6svk4imq3cjjr.apps.googleusercontent.com",
+      "scopes": [
+        "https://www.googleapis.com/auth/gmail.readonly",
+        "https://www.googleapis.com/auth/gmail.send",
+        "https://www.googleapis.com/auth/gmail.modify"
+      ]
+    }
 }
