@@ -21,7 +21,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           }).join("\n");
           
           // Add more details to the prompt for clarity and context
-          const prompt = `See the following thread, and generate a reply email in ENGLISH from my side for the last email sent by them. This should strictly contain only the body of the mail:
+          const prompt = `See the following thread, and write a reply email in ENGLISH from my side for the last email sent by them. This should strictly contain only the body of the mail:
           ${emailContent}`;
 
           console.log("Prompt being sent to AI model: ", prompt);
