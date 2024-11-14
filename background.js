@@ -21,7 +21,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           }).join("\n");
           
           // Add more details to the prompt for clarity and context
-          const prompt = `See the following thread, and write a reply email in ENGLISH from my side for the last email sent by them. This should strictly contain only the body of the mail:
+          const prompt = `See the following thread, and write a reply email in ENGLISH from my side. This should strictly contain only the body of the mail:
           ${emailContent}`;
 
           console.log("Prompt being sent to AI model: ", prompt);
@@ -29,10 +29,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           (async () => {
             try {
               console.log("Creating language model session...");
-              const session = await ai.languageModel.create();
+              const session1 = await ai.languageModel.create();
       
               console.log("Sending prompt:", );
-              const response = await session.prompt(prompt);
+              const response = await session1.prompt(prompt);
+
               console.log(response)
       
               // Split the response into subject and body
@@ -66,6 +67,64 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // Return true to indicate we're sending a response asynchronously
     return true;
   }
+  else if(request.action==='summarizeThread'){
+    const threadId = request.threadId;
+
+    // Get the OAuth token (you might already have it)
+    chrome.identity.getAuthToken({ interactive: true }, (token) => {
+      if (chrome.runtime.lastError || !token) {
+        console.error("Authentication failed:", chrome.runtime.lastError);
+        sendResponse({ error: "Authentication failed" });
+        return;
+      }
+
+      // Call Gmail API to get the thread
+      getEmailThread(token, threadId)
+        .then((messages) => {
+          // Generate a response based on the thread content
+          const emailContent = messages.map(msg => {
+            // Include both the message snippet and the sender context
+            return `${msg.sender.senderName} (${msg.sender.senderEmail}): ${msg.snippet}`;
+          }).join("\n");
+          
+          // Add more details to the prompt for clarity and context
+          const prompt = `Summarize this:
+          ${emailContent}`;
+
+          console.log("Prompt being sent to AI model: ", prompt);
+
+          (async () => {
+            try {
+              console.log("Creating language model session...");
+              summarizer = await ai.summarizer.create();
+      
+              console.log("Sending prompt:", );
+              const result2 = await summarizer.summarize(prompt);
+
+              console.log(result2)
+
+              // Send the summary back to content.js
+              chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+              if (tabs.length > 0) {
+                chrome.tabs.sendMessage(tabs[0].id, { action: "displaySummary", summary: result2 });
+                summarizer.destroy();
+              }
+            });
+    
+              sendResponse({ success: true });
+
+            } catch (error) {
+              console.error("Error generating email:", error);
+              sendResponse({ error: "Failed to generate email." });
+            }
+          })();
+        });
+    });
+
+    // Return true to indicate we're sending a response asynchronously
+    return true;
+  }
+  
   else if (request.action === 'showPopupInCompose') {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs.length > 0 && tabs[0].url.includes("https://mail.google.com/")) {
@@ -89,9 +148,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   else if (request.action === "generateEmail") {
-    const prompt = "You have to compose an email for me.First line would be the Subject and rest would be the body. " +
-                   "Strictly follow this format and no other text before the subject should be present. This is some reference for you: " + 
-                   request.prompt;
+    const prompt = `Compose an email using the following context. The first line should be the subject, followed by the body text. Do not include any additional text or format deviations before or after the subject line. 
+
+Context:
+${request.prompt}`;
 
     (async () => {
       try {
