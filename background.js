@@ -181,6 +181,68 @@ ${request.prompt}`;
 
     return true;
   }
+  else if (request.action === "refineBodyText") {
+    const prompt = `Refine the following email for me. This should striclty contain the body of the email and other additional details are not needed. Not even the subject.:
+Email:
+${request.text}`;
+
+    (async () => {
+      try {
+        console.log("Creating language model session...");
+        const session = await ai.languageModel.create();
+
+        console.log("Sending prompt:", prompt);
+        const response = await session.prompt(prompt);
+
+        console.log(response);
+
+        // Send subject and body back to content.js for direct insertion
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          if (tabs.length > 0) {
+            chrome.tabs.sendMessage(tabs[0].id, { action: "fillRefinedText",refinedText: response});
+          }
+        });
+
+        sendResponse({ success: true });
+      } catch (error) {
+        console.error("Error generating email:", error);
+        sendResponse({ error: "Failed to generate email." });
+      }
+    })();
+
+    return true;
+  }
+  else if (request.action === "refineSubjectText") {
+    const prompt = `Refine the following subject of an email for me. This should striclty contain only the subject of the email, any other text is prohibited :
+Subject of Email:
+${request.text}`;
+
+    (async () => {
+      try {
+        console.log("Creating language model session...");
+        const session = await ai.languageModel.create();
+
+        console.log("Sending prompt:", prompt);
+        const response = await session.prompt(prompt);
+
+        console.log(response);
+
+        // Send subject and body back to content.js for direct insertion
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          if (tabs.length > 0) {
+            chrome.tabs.sendMessage(tabs[0].id, { action: "fillRefinedSub",refinedText: response});
+          }
+        });
+
+        sendResponse({ success: true });
+      } catch (error) {
+        console.error("Error generating email:", error);
+        sendResponse({ error: "Failed to generate email." });
+      }
+    })();
+
+    return true;
+  }
 });
 
 chrome.runtime.onInstalled.addListener(() => {

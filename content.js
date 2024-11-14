@@ -9,6 +9,8 @@ const observer = new MutationObserver(() => {
       composeButton.dataset.popupAttached = "true";
       composeButton.addEventListener('click', () => {
           chrome.runtime.sendMessage({ action: 'showPopupInCompose' });
+
+          setTimeout(attachRefineButton, 500);
       });
   }
 });
@@ -175,3 +177,93 @@ const emailobserver = new MutationObserver(() => {
 });
 
 emailobserver.observe(document.body, { childList: true, subtree: true });
+
+// Function to attach the Refine button in the compose box
+function attachRefineButton() {
+  const composeBox = document.querySelector('.editable[aria-label="Message Body"]');
+  const subjectInput = document.querySelector('input[name="subjectbox"]');
+
+  if (composeBox && !document.getElementById('refine-body-button')) {
+      const refineButton = document.createElement('button');
+      refineButton.id = 'refine-body-button';
+      refineButton.textContent = 'Refine Body';
+      refineButton.style.cssText = `
+         position: sticky;  /* Absolute positioning */
+          top: 10px;  /* Adjust to desired position */
+          right: 10px;
+          padding: 6px 12px;
+          background-color: #1a73e8 !important;
+          color: white !important;
+          border: 1px solid #ccc !important;
+          border-radius: 5px !important;
+          cursor: pointer !important;
+          z-index: 10000;  /* High z-index to ensure visibility */
+          display: block !important; /* Ensure it’s displayed */
+      `;
+
+      composeBox.appendChild(refineButton);
+
+      // Listener for Refine button click
+      refineButton.addEventListener('click', () => {
+        const bodyText = composeBox.innerText;
+        if (bodyText) {
+            // Send the body text to the Prompt API
+            chrome.runtime.sendMessage({
+                action: 'refineBodyText',
+                text: bodyText
+            });
+        }
+      });
+  }
+  if(composeBox && !document.getElementById('refine-subject-button')){
+    const refineButton2 = document.createElement('button');
+    refineButton2.id = 'refine-subject-button';
+    refineButton2.textContent = 'Refine Subject';
+    refineButton2.style.cssText = `
+       position: sticky;  /* Absolute positioning */
+        top: 10px;  /* Adjust to desired position */
+        left: 100px
+        right: 10px;
+        padding: 6px 12px;
+        background-color: #1a73e8 !important;
+        color: white !important;
+        border: 1px solid #ccc !important;
+        border-radius: 5px !important;
+        cursor: pointer !important;
+        z-index: 10000;  /* High z-index to ensure visibility */
+        display: block !important; /* Ensure it’s displayed */
+    `;
+
+    composeBox.appendChild(refineButton2);
+
+    // Listener for Refine button click
+    refineButton2.addEventListener('click', () => {
+      const subText = subjectInput.value;
+          if (subText) {
+              // Send the body text to the Prompt API
+              chrome.runtime.sendMessage({
+                  action: 'refineSubjectText',
+                  text: subText
+              });
+          }
+    });
+  }
+}
+
+// Listen for refined text from the background script
+chrome.runtime.onMessage.addListener((request) => {
+  if (request.action === "fillRefinedText" && request.refinedText) {
+      const composeBox = document.querySelector('.editable[aria-label="Message Body"]');
+      if (composeBox) {
+          composeBox.innerHTML = request.refinedText; // Replace with refined content
+          attachRefineButton()
+      }
+  }
+  else if(request.action === "fillRefinedSub" && request.refinedText) {
+    const subjectInput = document.querySelector('input[name="subjectbox"]');
+    if (subjectInput) {
+        subjectInput.value = request.refinedText; // Replace with refined content
+        attachRefineButton()
+    }
+}
+});
