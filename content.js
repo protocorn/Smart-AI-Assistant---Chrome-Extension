@@ -1,15 +1,3 @@
-/*document.addEventListener('click', (event) => {
-  if (event.target.closest('span[role="link"].ams.bkH') || event.target.textContent.trim() === 'Reply') {
-    const threadId = getThreadIdFromGmail();
-      if (replyBox) {
-        if (threadId) {
-          attachGenerateEmailButtonToReplyBox(threadId);
-        }
-      }
-  }
-});*/
-
-
 let currentPopup = null; 
 let obs = false;
 
