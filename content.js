@@ -1,3 +1,15 @@
+/*document.addEventListener('click', (event) => {
+  if (event.target.closest('span[role="link"].ams.bkH') || event.target.textContent.trim() === 'Reply') {
+    const threadId = getThreadIdFromGmail();
+      if (replyBox) {
+        if (threadId) {
+          attachGenerateEmailButtonToReplyBox(threadId);
+        }
+      }
+  }
+});*/
+
+
 let currentPopup = null; 
 let obs = false;
 
@@ -133,22 +145,78 @@ const pageChangeObserver = new MutationObserver(() => {
 pageChangeObserver.observe(document.body, { childList: true, subtree: true });
 }
 
+function attachGenerateEmailButtonToReplyBox(currentThreadId) {
+  const replyBox = document.querySelector('.editable[aria-label="Message Body"]'); // Select the reply box
+
+  if (replyBox) {
+    // Ensure the button is added only once
+    if (replyBox && !document.getElementById('generate-email-button')) {
+      const generateButton = document.createElement('button');
+      generateButton.id = 'generate-email-button';
+      generateButton.textContent = 'Generate Email';
+      generateButton.style.cssText = `
+          position: sticky;
+          top: ${replyBox.offsetTop + 5}px;
+          left: ${replyBox.offsetLeft + replyBox.offsetWidth + 10}px;
+          padding: 6px 12px;
+          background-color: #1a73e8;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          z-index: 10000;
+      `;
+
+      // Append the button to the parent container
+      replyBox.parentElement.style.position = 'relative'; // Ensure parent is positioned
+      replyBox.parentElement.appendChild(generateButton);
+
+      // Listener for "Generate Reply" button click
+      generateButton.addEventListener('click', () => {
+        // Send the body text to the Prompt API
+        chrome.runtime.sendMessage({
+            action: 'getThreadAndGenerateResponse',
+            threadId: currentThreadId
+        });
+      });
+    }
+  } else {
+    // If the reply box is not available yet, use a MutationObserver to detect when it appears
+    const observer = new MutationObserver(() => {
+      const replyBox = document.querySelector('.editable[aria-label="Message Body"]');
+      if (replyBox) {
+        attachGenerateEmailButtonToReplyBox(currentThreadId);
+        observer.disconnect();  // Stop observing once the button is added
+      }
+    });
+
+    // Start observing the DOM for changes
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+}
+
+
 // Observe clicks to detect reply actions
 document.addEventListener('click', function(event) {
   console.log('Clicked element:', event.target);  // Log the clicked element
   if (event.target && (event.target.matches('span[role="link"].ams.bkH') || event.target.textContent.trim() === 'Reply')) {
     console.log("Reply button clicked, using currentThreadId:", currentThreadId);
-
+    // Observe for the reply box to dynamically inject the button
+    //const observer2 = new MutationObserver(() => {
+      //const replyBox = document.querySelector('.editable[aria-label="Message Body"]');
     if (currentThreadId) {
-      chrome.runtime.sendMessage({
-        action: 'getThreadAndGenerateResponse',
-        threadId: currentThreadId
-      });
-    } else {
+        attachGenerateEmailButtonToReplyBox(currentThreadId);
+    } 
+    else {
       console.error("No thread ID found when replying.");
     }
+    //});
+
+    // Start observing for changes in the DOM
+    //observer2.observe(document.body, { childList: true, subtree: true });
   }
 });
+
 
 // Extract the thread ID from email element
 function getThreadIdFromEmail(emailElement) {
@@ -207,8 +275,6 @@ function attachRefineButton() {
         cursor: pointer !important;
       `;
 
-      composeBox.appendChild(refineButton);
-
       // Listener for Refine button click
       refineButton.addEventListener('click', () => {
         const bodyText = composeBox.innerText;
@@ -233,7 +299,9 @@ function attachRefineButton() {
         border-radius: 5px !important;
         cursor: pointer !important;
     `;
-
+    composeBox.parentElement.style.position = 'relative'; // Ensure parent is positioned
+    composeBox.parentElement.appendChild(buttonsContainer);
+    composeBox.appendChild(refineButton);
     composeBox.appendChild(refineButton2);
 
     // Listener for Refine button click

@@ -363,7 +363,7 @@ function injectComposeUI() {
     <div style="position: absolute; top: 50px; left: 20px; background-color: #fff; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); z-index: 10000;">
       <h4>Generate Email</h4>
       <button id="closePopup" style="position: absolute; top: 5px; right: 5px; background: none; border: none; font-size: 16px; cursor: pointer;">✖</button>
-      <input type="text" id="prompt" placeholder="Enter prompt for email" style="width: 100%; margin-bottom: 10px; padding: 8px;" />
+      <input type="text" id="prompt" placeholder="Enter prompt for email" style="width: 94%; margin-bottom: 10px; padding: 8px;" />
       <button id="generateEmail" style="width: 100%; padding: 10px; background-color: #4CAF50; color: white; font-size: 14px; border: none; cursor: pointer;">Generate Email</button>
     </div>
   `;
