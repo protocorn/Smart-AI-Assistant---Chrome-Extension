@@ -1,5 +1,8 @@
 let currentPopup = null; 
 let obs = false;
+//------------------------------------------------------------------------//
+//--------------SHOW PROMPT POPUP ON CLICKING COMPOSE BUTTON--------------//
+//------------------------------------------------------------------------//
 
 // Observer for the compose button popup
 const observer = new MutationObserver(() => {
@@ -17,7 +20,12 @@ const observer = new MutationObserver(() => {
 
 observer.observe(document.body, { childList: true, subtree: true });
 
-// Listen for messages to fill in the email subject and body
+//------------------------------------------------------------------------//
+//----------------FILL THE EMAIL BOX WITH BODY AND SUBJECT----------------//
+//----------------------------------OR------------------------------------//
+//----------------------DISPLAY THE SUMMARY IN POPUP----------------------//
+//------------------------------------------------------------------------//
+
 chrome.runtime.onMessage.addListener((request) => {
   if (request.action === "fillEmail") {
       const subjectInput = document.querySelector('input[name="subjectbox"]');
@@ -33,6 +41,10 @@ chrome.runtime.onMessage.addListener((request) => {
 });
 
 let currentThreadId = null;
+
+//------------------------------------------------------------------------//
+//-----------------FUNCTION TO INJECT SUMMARIZATION BUTTON----------------//
+//------------------------------------------------------------------------//
 
 // Inject the "Summarize Thread" button
 function injectSummarizeButton(threadId) {
@@ -65,6 +77,10 @@ function injectSummarizeButton(threadId) {
       chrome.runtime.sendMessage({ action: 'summarizeThread', threadId });
   });
 }
+
+//------------------------------------------------------------------------//
+//-----------------FUNCTION TO DISPLAY SUMMARIZATION POPUP----------------//
+//------------------------------------------------------------------------//
 
 // Display the summary popup with "Regenerate Summary" option
 function displaySummaryPopup(summary) {
@@ -111,6 +127,10 @@ function displaySummaryPopup(summary) {
 }
 }
 
+//------------------------------------------------------------------------//
+//---------------FUNCTION TO REMOVE THE SUMMARIZATION BUTTON--------------//
+//------------------------------------------------------------------------//
+
 // Remove the "Summarize Thread" button
 function removeSummarizeButton() {
   const summarizeButton = document.getElementById('summarize-thread-button');
@@ -133,12 +153,19 @@ const pageChangeObserver = new MutationObserver(() => {
 pageChangeObserver.observe(document.body, { childList: true, subtree: true });
 }
 
+//------------------------------------------------------------------------//
+//-----------------FUNCTION TO ATTACH BUTTONS IN REPLY BOX----------------//
+//------------------------------------------------------------------------//
+
 function attachGenerateEmailButtonToReplyBox(currentThreadId) {
   const replyBox = document.querySelector('.editable[aria-label="Message Body"]'); // Select the reply box
 
   if (replyBox) {
     // Ensure the button is added only once
-    if (replyBox && !document.getElementById('generate-email-button')) {
+    if (replyBox && !document.getElementById('generate-email-button') && !document.getElementById('refine-body-button')) {
+
+      //----------------GENERATE REPLY BUTTON----------------//
+  
       const generateButton = document.createElement('button');
       generateButton.id = 'generate-email-button';
       generateButton.textContent = 'Generate Email';
@@ -155,17 +182,50 @@ function attachGenerateEmailButtonToReplyBox(currentThreadId) {
           z-index: 10000;
       `;
 
+      //----------------REFINE REPLY BUTTON----------------//
+
+      const refineButton = document.createElement('button');
+      refineButton.id = 'refine-body-button';
+      refineButton.textContent = 'Refine Body';
+      refineButton.style.cssText = `
+          padding: 6px 12px;
+          background-color: #1a73e8 !important;
+          color: white !important;
+          border: 1px solid #ccc !important;
+          border-radius: 5px !important;
+          cursor: pointer !important;
+      `;
+
       // Append the button to the parent container
       replyBox.parentElement.style.position = 'relative'; // Ensure parent is positioned
       replyBox.parentElement.appendChild(generateButton);
+      replyBox.parentElement.appendChild(refineButton);
 
-      // Listener for "Generate Reply" button click
+      //----------------GENERATE REPLY BUTTON CLICKED----------------//
+
       generateButton.addEventListener('click', () => {
         // Send the body text to the Prompt API
         chrome.runtime.sendMessage({
             action: 'getThreadAndGenerateResponse',
             threadId: currentThreadId
         });
+      });
+
+      //----------------REFINE REPLY BUTTON CLICKED----------------//
+
+      refineButton.addEventListener('click', () => {
+        const bodyText = replyBox.innerText;
+        console.log(bodyText)
+        if (bodyText) {
+          // Send the body text to the Prompt API
+          chrome.runtime.sendMessage({
+            action: 'refineBodyText',
+            text: bodyText
+          });
+        }
+        else{
+          alert("Body is Empty")
+        }
       });
     }
   } else {
@@ -183,28 +243,27 @@ function attachGenerateEmailButtonToReplyBox(currentThreadId) {
   }
 }
 
+//------------------------------------------------------------------------//
+//-------------------DETECT WHEN REPLY BUTTON IS CLICKED------------------//
+//------------------------------------------------------------------------//
 
 // Observe clicks to detect reply actions
 document.addEventListener('click', function(event) {
   console.log('Clicked element:', event.target);  // Log the clicked element
   if (event.target && (event.target.matches('span[role="link"].ams.bkH') || event.target.textContent.trim() === 'Reply')) {
     console.log("Reply button clicked, using currentThreadId:", currentThreadId);
-    // Observe for the reply box to dynamically inject the button
-    //const observer2 = new MutationObserver(() => {
-      //const replyBox = document.querySelector('.editable[aria-label="Message Body"]');
     if (currentThreadId) {
         attachGenerateEmailButtonToReplyBox(currentThreadId);
     } 
     else {
       console.error("No thread ID found when replying.");
     }
-    //});
-
-    // Start observing for changes in the DOM
-    //observer2.observe(document.body, { childList: true, subtree: true });
   }
 });
 
+//------------------------------------------------------------------------//
+//-------------------FUNCTION TO GET THREAD ID FROM EMAIL-----------------//
+//------------------------------------------------------------------------//
 
 // Extract the thread ID from email element
 function getThreadIdFromEmail(emailElement) {
@@ -215,7 +274,10 @@ function getThreadIdFromEmail(emailElement) {
   return null;
 }
 
-// Observer to track clicks on email rows
+//------------------------------------------------------------------------//
+//------------------OBSERVER TO UPDATE CURRENT THREAD ID------------------//
+//------------------------------------------------------------------------//
+
 const emailobserver = new MutationObserver(() => {
   const emailRows = document.querySelectorAll('tr[jscontroller="ZdOxDb"]');
 
@@ -234,12 +296,19 @@ const emailobserver = new MutationObserver(() => {
 
 emailobserver.observe(document.body, { childList: true, subtree: true });
 
+//------------------------------------------------------------------------//
+//-------------------FUNCTION TO ATTACH REFINE BUTTONS--------------------//
+//------------------------------------------------------------------------//
+
 // Function to attach the Refine button in the compose box
 function attachRefineButton() {
   const composeBox = document.querySelector('.editable[aria-label="Message Body"]');
   const subjectInput = document.querySelector('input[name="subjectbox"]');
 
   if (composeBox && !document.getElementById('refine-buttons-container')) {
+
+    //----------------REFINE BUTTONS CONTAINER----------------//
+
     const buttonsContainer = document.createElement('div');
     buttonsContainer.id = 'refine-buttons-container';
     buttonsContainer.style.cssText = `
@@ -250,6 +319,8 @@ function attachRefineButton() {
         gap: 10px;  /* Add spacing between buttons */
         z-index: 10000;  /* High z-index to ensure visibility */
     `;
+
+    //----------------REFINE BUTTON FOR BODY----------------//
 
     const refineButton = document.createElement('button');
     refineButton.id = 'refine-body-button';
@@ -262,6 +333,8 @@ function attachRefineButton() {
         border-radius: 5px !important;
         cursor: pointer !important;
     `;
+
+    //----------------REFINE BUTTON FOR SUBJECT----------------//
 
     const refineButton2 = document.createElement('button');
     refineButton2.id = 'refine-subject-button';
@@ -281,7 +354,8 @@ function attachRefineButton() {
     buttonsContainer.appendChild(refineButton);
     buttonsContainer.appendChild(refineButton2);
 
-     // Listener for Refine button click
+    //----------------REFINE BODY BUTTON CLICKED----------------//
+
      refineButton.addEventListener('click', () => {
       const bodyText = composeBox.innerText;
       if (bodyText) {
@@ -295,7 +369,9 @@ function attachRefineButton() {
         alert("Body is Empty")
       }
     });
-    // Listener for Refine button click
+    
+    //----------------REFINE SUBJECT BUTTON CLICKED----------------//
+
     refineButton2.addEventListener('click', () => {
       const subText = subjectInput.value;
       if (subText) {
@@ -312,6 +388,9 @@ function attachRefineButton() {
   }
 }
 
+//------------------------------------------------------------------------//
+//-------------FILL THE REFINED BODY AND SUBJECT RESPECTIVELY-------------//
+//------------------------------------------------------------------------//
 
 // Listen for refined text from the background script
 chrome.runtime.onMessage.addListener((request) => {
@@ -319,14 +398,14 @@ chrome.runtime.onMessage.addListener((request) => {
       const composeBox = document.querySelector('.editable[aria-label="Message Body"]');
       if (composeBox) {
           composeBox.innerHTML = request.refinedText; // Replace with refined content
-          attachRefineButton()
+          //attachRefineButton()
       }
   }
   else if(request.action === "fillRefinedSub" && request.refinedText) {
     const subjectInput = document.querySelector('input[name="subjectbox"]');
     if (subjectInput) {
         subjectInput.value = request.refinedText; // Replace with refined content
-        attachRefineButton()
+        //attachRefineButton()
     }
 }
 });
