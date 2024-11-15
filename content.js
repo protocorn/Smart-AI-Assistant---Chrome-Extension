@@ -263,21 +263,6 @@ function attachRefineButton() {
         cursor: pointer !important;
     `;
 
-    // Listener for Refine button click
-    refineButton.addEventListener('click', () => {
-      const bodyText = composeBox.innerText;
-      if (bodyText) {
-        // Send the body text to the Prompt API
-        chrome.runtime.sendMessage({
-          action: 'refineBodyText',
-          text: bodyText
-        });
-      }
-      else{
-        alert("Body is Empty")
-      }
-    });
-
     const refineButton2 = document.createElement('button');
     refineButton2.id = 'refine-subject-button';
     refineButton2.textContent = 'Refine Subject';
@@ -296,6 +281,20 @@ function attachRefineButton() {
     buttonsContainer.appendChild(refineButton);
     buttonsContainer.appendChild(refineButton2);
 
+     // Listener for Refine button click
+     refineButton.addEventListener('click', () => {
+      const bodyText = composeBox.innerText;
+      if (bodyText) {
+        // Send the body text to the Prompt API
+        chrome.runtime.sendMessage({
+          action: 'refineBodyText',
+          text: bodyText
+        });
+      }
+      else{
+        alert("Body is Empty")
+      }
+    });
     // Listener for Refine button click
     refineButton2.addEventListener('click', () => {
       const subText = subjectInput.value;
