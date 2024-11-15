@@ -255,37 +255,40 @@ function attachRefineButton() {
     const buttonsContainer = document.createElement('div');
     buttonsContainer.id = 'refine-buttons-container';
     buttonsContainer.style.cssText = `
-        position: sticky;  /* Fixed position relative to the compose box */
-        top: 10px;  /* Adjust to desired position */
+        position: sticky;  /* Position relative to compose box container */
+        top: 10px;  /* Adjust to desired vertical position */
         right: 10px;
         display: flex;  /* Use flexbox for side-by-side layout */
         gap: 10px;  /* Add spacing between buttons */
         z-index: 10000;  /* High z-index to ensure visibility */
     `;
 
-      const refineButton = document.createElement('button');
-      refineButton.id = 'refine-body-button';
-      refineButton.textContent = 'Refine Body';
-      refineButton.style.cssText = `
+    const refineButton = document.createElement('button');
+    refineButton.id = 'refine-body-button';
+    refineButton.textContent = 'Refine Body';
+    refineButton.style.cssText = `
         padding: 6px 12px;
         background-color: #1a73e8 !important;
         color: white !important;
         border: 1px solid #ccc !important;
         border-radius: 5px !important;
         cursor: pointer !important;
-      `;
+    `;
 
-      // Listener for Refine button click
-      refineButton.addEventListener('click', () => {
-        const bodyText = composeBox.innerText;
-        if (bodyText) {
-            // Send the body text to the Prompt API
-            chrome.runtime.sendMessage({
-                action: 'refineBodyText',
-                text: bodyText
-            });
-        }
-      });
+    // Listener for Refine button click
+    refineButton.addEventListener('click', () => {
+      const bodyText = composeBox.innerText;
+      if (bodyText) {
+        // Send the body text to the Prompt API
+        chrome.runtime.sendMessage({
+          action: 'refineBodyText',
+          text: bodyText
+        });
+      }
+      else{
+        alert("Body is Empty")
+      }
+    });
 
     const refineButton2 = document.createElement('button');
     refineButton2.id = 'refine-subject-button';
@@ -299,24 +302,29 @@ function attachRefineButton() {
         border-radius: 5px !important;
         cursor: pointer !important;
     `;
-    composeBox.parentElement.style.position = 'relative'; // Ensure parent is positioned
+
+    // Append buttons to the container instead of composeBox
     composeBox.parentElement.appendChild(buttonsContainer);
-    composeBox.appendChild(refineButton);
-    composeBox.appendChild(refineButton2);
+    buttonsContainer.appendChild(refineButton);
+    buttonsContainer.appendChild(refineButton2);
 
     // Listener for Refine button click
     refineButton2.addEventListener('click', () => {
       const subText = subjectInput.value;
-          if (subText) {
-              // Send the body text to the Prompt API
-              chrome.runtime.sendMessage({
-                  action: 'refineSubjectText',
-                  text: subText
-              });
-          }
+      if (subText) {
+        // Send the subject text to the Prompt API
+        chrome.runtime.sendMessage({
+          action: 'refineSubjectText',
+          text: subText
+        });
+      }
+      else{
+        alert("Subject is Empty")
+      }
     });
   }
 }
+
 
 // Listen for refined text from the background script
 chrome.runtime.onMessage.addListener((request) => {
