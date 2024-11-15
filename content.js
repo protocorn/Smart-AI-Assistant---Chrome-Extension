@@ -183,22 +183,28 @@ function attachRefineButton() {
   const composeBox = document.querySelector('.editable[aria-label="Message Body"]');
   const subjectInput = document.querySelector('input[name="subjectbox"]');
 
-  if (composeBox && !document.getElementById('refine-body-button')) {
+  if (composeBox && !document.getElementById('refine-buttons-container')) {
+    const buttonsContainer = document.createElement('div');
+    buttonsContainer.id = 'refine-buttons-container';
+    buttonsContainer.style.cssText = `
+        position: sticky;  /* Fixed position relative to the compose box */
+        top: 10px;  /* Adjust to desired position */
+        right: 10px;
+        display: flex;  /* Use flexbox for side-by-side layout */
+        gap: 10px;  /* Add spacing between buttons */
+        z-index: 10000;  /* High z-index to ensure visibility */
+    `;
+
       const refineButton = document.createElement('button');
       refineButton.id = 'refine-body-button';
       refineButton.textContent = 'Refine Body';
       refineButton.style.cssText = `
-         position: sticky;  /* Absolute positioning */
-          top: 10px;  /* Adjust to desired position */
-          right: 10px;
-          padding: 6px 12px;
-          background-color: #1a73e8 !important;
-          color: white !important;
-          border: 1px solid #ccc !important;
-          border-radius: 5px !important;
-          cursor: pointer !important;
-          z-index: 10000;  /* High z-index to ensure visibility */
-          display: block !important; /* Ensure it’s displayed */
+        padding: 6px 12px;
+        background-color: #1a73e8 !important;
+        color: white !important;
+        border: 1px solid #ccc !important;
+        border-radius: 5px !important;
+        cursor: pointer !important;
       `;
 
       composeBox.appendChild(refineButton);
@@ -214,24 +220,18 @@ function attachRefineButton() {
             });
         }
       });
-  }
-  if(composeBox && !document.getElementById('refine-subject-button')){
+
     const refineButton2 = document.createElement('button');
     refineButton2.id = 'refine-subject-button';
     refineButton2.textContent = 'Refine Subject';
     refineButton2.style.cssText = `
-       position: sticky;  /* Absolute positioning */
-        top: 10px;  /* Adjust to desired position */
-        left: 100px
-        right: 10px;
-        padding: 6px 12px;
+       padding: 6px 12px;
+       margin-left: 10px;
         background-color: #1a73e8 !important;
         color: white !important;
         border: 1px solid #ccc !important;
         border-radius: 5px !important;
         cursor: pointer !important;
-        z-index: 10000;  /* High z-index to ensure visibility */
-        display: block !important; /* Ensure it’s displayed */
     `;
 
     composeBox.appendChild(refineButton2);
