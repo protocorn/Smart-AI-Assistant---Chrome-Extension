@@ -38,6 +38,33 @@ chrome.runtime.onMessage.addListener((request) => {
   } else if (request.action === "displaySummary" && request.summary) {
       displaySummaryPopup(request.summary);  // Call the popup display function for summaries
   }
+  else if (request.action === 'highlight') {
+    const emailBody = document.querySelector('div.a3s.aiL');
+    if (!emailBody) return;
+
+    let content = emailBody.innerHTML;
+
+    // Escape special regex characters in each phrase
+    const escapeRegExp = (str) => str.replace(/[.*+?^=!:${}()|\[\]\/\\]/g, '\\$&');
+
+    request.phrase.forEach((phrase) => {
+        console.log('Highlighting phrase:', phrase);
+        
+        // Escape special characters for safe regex usage
+        const escapedPhrase = escapeRegExp(phrase);
+        
+        // Create the regex pattern to highlight the phrase case-insensitively
+        const regex = new RegExp(`(${escapedPhrase})`, 'gi'); // Case-insensitive match
+        
+        // Replace occurrences of the phrase with the highlighted version
+        content = content.replace(regex, '<mark>$1</mark>');
+    });
+
+    console.log('Updated content with highlights:', content);
+
+    // Update the email body with the highlighted content
+    emailBody.innerHTML = content;
+}
 });
 
 let currentThreadId = null;
@@ -290,6 +317,9 @@ const emailobserver = new MutationObserver(() => {
 
         injectSummarizeButton(currentThreadId);  // Inject with new thread ID
       }
+      if(currentThreadId){
+        chrome.runtime.sendMessage({ action: 'highlightPhrases', threadId: currentThreadId});
+        }
     });
   });
 });
