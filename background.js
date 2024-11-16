@@ -2,15 +2,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   
   console.log('Received message:', request);
-  chrome.storage.sync.get(['feature1', 'feature2', 'feature3'], function(data) {
-    const flagFeature1 = data.feature1 !== false;
-    const flagFeature2 = data.feature2 !== false;
-    const flagFeature3 = data.feature3 !== false;
+  chrome.storage.sync.get(["compose_email", "generate_reply", "refine_text", "summarize_thread", "highlight_phrase"], function(data) {
+    const flagComposeEmail = data.compose_email !== false;
+    const flagGenerateReply = data.generate_reply !== false;
+    const flagRefineText = data.refine_text !== false;
+    const flagSummarizeThread = data.summarize_thread !== false;
+    const flagHighlightPhrase = data.highlight_phrase !== false;
+
   //------------------------------------------------------------------------//
   //--------------------GENERATE A REPLY FOR A THREAD-----------------------//
   //------------------------------------------------------------------------//
 
-  if (request.action === 'getThreadAndGenerateResponse') {
+  if (request.action === 'getThreadAndGenerateResponse' && flagGenerateReply) {
     const threadId = request.threadId;
 
     // Get the OAuth token (you might already have it)
@@ -68,7 +71,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   //-----------------------------SUMMARIZE A THREAD-------------------------//
   //------------------------------------------------------------------------//
 
-  else if (request.action === 'summarizeThread' && flagFeature3) {
+  else if (request.action === 'summarizeThread' && flagSummarizeThread) {
     const threadId = request.threadId;
 
     // Get the OAuth token (you might already have it)
@@ -130,7 +133,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   //--------------OPENING A POP ON CLICKING COMPOSE BUTTON------------------//
   //------------------------------------------------------------------------//
 
-  else if (request.action === 'showPopupInCompose' && flagFeature1) {
+  else if (request.action === 'showPopupInCompose' && flagComposeEmail) {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs.length > 0 && tabs[0].url.includes("https://mail.google.com/")) {
         chrome.scripting.executeScript({
@@ -156,7 +159,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   //-------------------GENERATE AN EMAIL BASED ON PROMPT--------------------//
   //------------------------------------------------------------------------//
 
-  else if (request.action === "generateEmail" && flagFeature1) {
+  else if (request.action === "generateEmail" && flagComposeEmail) {
     const prompt = `Compose an email using the following context. The first line should be the subject, followed by the body text. Do not include any additional text or format deviations before or after the subject line. 
 
 Context:
@@ -181,7 +184,7 @@ ${request.prompt}`;
   //---------------------REFINE BODY TEXT OF AN EMAIL-----------------------//
   //------------------------------------------------------------------------//
 
-  else if (request.action === "refineBodyText") {
+  else if (request.action === "refineBodyText" && flagRefineText) {
     const prompt = `Refine the following email for me. This should striclty contain the body of the email and other additional details are not needed. Not even the subject.:
 Email:
 ${request.text}`;
@@ -206,7 +209,7 @@ ${request.text}`;
   //--------------------REFINE SUBJECT TEXT OF AN EMAIL---------------------//
   //------------------------------------------------------------------------//
 
-  else if (request.action === "refineSubjectText") {
+  else if (request.action === "refineSubjectText" && flagRefineText) {
     const prompt = `Refine the following subject of an email for me. This should striclty contain only the subject of the email, any other text is prohibited :
 Subject of Email:
 ${request.text}`;
@@ -229,7 +232,7 @@ ${request.text}`;
   //----------------HIGHLIGHT IMPORTANT PHRASES IN AN EMAILL----------------//
   //------------------------------------------------------------------------//
 
-  else if (request.action === 'highlightPhrases') {
+  else if (request.action === 'highlightPhrases' && flagHighlightPhrase) {
     const threadId = request.threadId;
 
     // Get the OAuth token (you might already have it)

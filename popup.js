@@ -1,6 +1,6 @@
 // Retrieve the saved feature flags from Chrome storage on popup load
 document.addEventListener("DOMContentLoaded", function () {
-  const features = ["feature1", "feature2", "feature3", "feature4", "feature5"];
+  const features = ["compose_email", "generate_reply", "refine_text", "summarize_thread", "highlight_phrase"];
 
   // Load saved states from chrome.storage.sync
   chrome.storage.sync.get(features, function (data) {
