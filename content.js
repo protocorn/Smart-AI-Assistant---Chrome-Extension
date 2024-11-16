@@ -1,4 +1,4 @@
-let currentPopup = null; 
+let currentPopup = null;
 let obs = false;
 let currentThreadId = null;
 
@@ -11,12 +11,19 @@ const observer = new MutationObserver(() => {
   const composeButton = document.querySelector('.T-I.T-I-KE.L3');
 
   if (composeButton && !composeButton.dataset.popupAttached) {
-      composeButton.dataset.popupAttached = "true";
-      composeButton.addEventListener('click', () => {
+    composeButton.dataset.popupAttached = "true";
+    composeButton.addEventListener('click', () => {
+      chrome.storage.sync.get(["compose_email", "refine_text"], function (data) {
+        const flagComposeEmail = data.compose_email !== false;
+        const flagRefineText = data.refine_text !== false;
+        if (flagComposeEmail) {
           chrome.runtime.sendMessage({ action: 'showPopupInCompose' });
-
+        }
+        if (flagRefineText) {
           setTimeout(attachRefineButton, 500);
+        }
       });
+    });
   }
 });
 
@@ -30,15 +37,15 @@ observer.observe(document.body, { childList: true, subtree: true });
 
 chrome.runtime.onMessage.addListener((request) => {
   if (request.action === "fillEmail") {
-      const subjectInput = document.querySelector('input[name="subjectbox"]');
-      const bodyInput = document.querySelector('.editable[aria-label="Message Body"]');
+    const subjectInput = document.querySelector('input[name="subjectbox"]');
+    const bodyInput = document.querySelector('.editable[aria-label="Message Body"]');
 
-      if (subjectInput && bodyInput) {
-          subjectInput.value = request.subject;
-          bodyInput.innerHTML = request.body;
-      }
+    if (subjectInput && bodyInput) {
+      subjectInput.value = request.subject;
+      bodyInput.innerHTML = request.body;
+    }
   } else if (request.action === "displaySummary" && request.summary) {
-      displaySummaryPopup(request.summary);  // Call the popup display function for summaries
+    displaySummaryPopup(request.summary);  // Call the popup display function for summaries
   }
   else if (request.action === 'highlight') {
     const emailBody = document.querySelector('div.a3s.aiL');
@@ -50,23 +57,23 @@ chrome.runtime.onMessage.addListener((request) => {
     const escapeRegExp = (str) => str.replace(/[.*+?^=!:${}()|\[\]\/\\]/g, '\\$&');
 
     request.phrase.forEach((phrase) => {
-        console.log('Highlighting phrase:', phrase);
-        
-        // Escape special characters for safe regex usage
-        const escapedPhrase = escapeRegExp(phrase);
-        
-        // Create the regex pattern to highlight the phrase case-insensitively
-        const regex = new RegExp(`(${escapedPhrase})`, 'gi'); // Case-insensitive match
-        
-        // Replace occurrences of the phrase with the highlighted version
-        content = content.replace(regex, '<mark>$1</mark>');
+      console.log('Highlighting phrase:', phrase);
+
+      // Escape special characters for safe regex usage
+      const escapedPhrase = escapeRegExp(phrase);
+
+      // Create the regex pattern to highlight the phrase case-insensitively
+      const regex = new RegExp(`(${escapedPhrase})`, 'gi'); // Case-insensitive match
+
+      // Replace occurrences of the phrase with the highlighted version
+      content = content.replace(regex, '<mark>$1</mark>');
     });
 
     console.log('Updated content with highlights:', content);
 
     // Update the email body with the highlighted content
     emailBody.innerHTML = content; //try innetText instead.......................................................................
-}
+  }
 });
 
 //------------------------------------------------------------------------//
@@ -78,7 +85,7 @@ function injectSummarizeButton(threadId) {
   let summarizeButton = document.getElementById('summarize-thread-button');
 
   if (summarizeButton) {
-      summarizeButton.remove();  // Clear the old button to avoid duplicates
+    summarizeButton.remove();  // Clear the old button to avoid duplicates
   }
 
   summarizeButton = document.createElement('button');
@@ -98,10 +105,10 @@ function injectSummarizeButton(threadId) {
   `;
 
   document.body.appendChild(summarizeButton);
-  obs=true;
+  obs = true;
 
   summarizeButton.addEventListener('click', () => {
-      chrome.runtime.sendMessage({ action: 'summarizeThread', threadId });
+    chrome.runtime.sendMessage({ action: 'summarizeThread', threadId });
   });
 }
 
@@ -139,19 +146,19 @@ function displaySummaryPopup(summary) {
         <button id="close-summary-popup">Close</button>
     `;
 
-  document.body.appendChild(currentPopup);
+    document.body.appendChild(currentPopup);
 
-  // Event listener for the Regenerate Summary button
-  document.getElementById('regenerate-summary').addEventListener('click', () => {
+    // Event listener for the Regenerate Summary button
+    document.getElementById('regenerate-summary').addEventListener('click', () => {
       chrome.runtime.sendMessage({ action: 'summarizeThread', threadId: currentThreadId });
-  });
+    });
 
-  // Event listener for the Close button
-  document.getElementById('close-summary-popup').addEventListener('click', () => {
+    // Event listener for the Close button
+    document.getElementById('close-summary-popup').addEventListener('click', () => {
       document.body.removeChild(currentPopup);
       currentPopup = null; // Reset the currentPopup reference when closed
-  });
-}
+    });
+  }
 }
 
 //------------------------------------------------------------------------//
@@ -162,22 +169,22 @@ function displaySummaryPopup(summary) {
 function removeSummarizeButton() {
   const summarizeButton = document.getElementById('summarize-thread-button');
   if (summarizeButton) {
-      summarizeButton.remove();
-      obs=false;
+    summarizeButton.remove();
+    obs = false;
   }
 }
 
-if(obs){
-// Monitor changes in the page to detect navigation
-const pageChangeObserver = new MutationObserver(() => {
-  // Check if the "Summarize Thread" button is present
-  const currentSummarizeButton = document.getElementById('summarize-thread-button');
-  if (currentSummarizeButton) {
+if (obs) {
+  // Monitor changes in the page to detect navigation
+  const pageChangeObserver = new MutationObserver(() => {
+    // Check if the "Summarize Thread" button is present
+    const currentSummarizeButton = document.getElementById('summarize-thread-button');
+    if (currentSummarizeButton) {
       removeSummarizeButton();  // Remove button if navigation occurs
-  }
-});
-// Start observing for changes in the body of the document
-pageChangeObserver.observe(document.body, { childList: true, subtree: true });
+    }
+  });
+  // Start observing for changes in the body of the document
+  pageChangeObserver.observe(document.body, { childList: true, subtree: true });
 }
 
 //------------------------------------------------------------------------//
@@ -185,18 +192,25 @@ pageChangeObserver.observe(document.body, { childList: true, subtree: true });
 //------------------------------------------------------------------------//
 
 function attachGenerateEmailButtonToReplyBox(currentThreadId) {
-  const replyBox = document.querySelector('.editable[aria-label="Message Body"]'); // Select the reply box
+  chrome.storage.sync.get(["generate_reply", "refine_text"], function (data) {
+    const flagGenerateReply = data.generate_reply !== false;
+    const flagRefineText = data.refine_text !== false;
 
-  if (replyBox) {
-    // Ensure the button is added only once
-    if (replyBox && !document.getElementById('generate-email-button') && !document.getElementById('refine-body-button')) {
+    const replyBox = document.querySelector('.editable[aria-label="Message Body"]'); // Select the reply box
 
-      //----------------GENERATE REPLY BUTTON----------------//
-  
-      const generateButton = document.createElement('button');
-      generateButton.id = 'generate-email-button';
-      generateButton.textContent = 'Generate Email';
-      generateButton.style.cssText = `
+    if (replyBox) {
+      // Ensure the button is added only once
+      // Append the button to the parent container
+      replyBox.parentElement.style.position = 'relative'; // Ensure parent is positioned
+
+      if (replyBox && !document.getElementById('generate-email-button') && flagGenerateReply) {
+
+        //----------------GENERATE REPLY BUTTON----------------//
+
+        const generateButton = document.createElement('button');
+        generateButton.id = 'generate-email-button';
+        generateButton.textContent = 'Generate Email';
+        generateButton.style.cssText = `
           position: sticky;
           top: ${replyBox.offsetTop + 5}px;
           left: ${replyBox.offsetLeft + replyBox.offsetWidth + 10}px;
@@ -209,65 +223,67 @@ function attachGenerateEmailButtonToReplyBox(currentThreadId) {
           z-index: 10000;
       `;
 
-      //----------------REFINE REPLY BUTTON----------------//
+        replyBox.parentElement.appendChild(generateButton);
 
-      const refineButton = document.createElement('button');
-      refineButton.id = 'refine-body-button';
-      refineButton.textContent = 'Refine Body';
-      refineButton.style.cssText = `
-          padding: 6px 12px;
-          background-color: #1a73e8 !important;
-          color: white !important;
-          border: 1px solid #ccc !important;
-          border-radius: 5px !important;
-          cursor: pointer !important;
-      `;
+        //----------------GENERATE REPLY BUTTON CLICKED----------------//
 
-      // Append the button to the parent container
-      replyBox.parentElement.style.position = 'relative'; // Ensure parent is positioned
-      replyBox.parentElement.appendChild(generateButton);
-      replyBox.parentElement.appendChild(refineButton);
-
-      //----------------GENERATE REPLY BUTTON CLICKED----------------//
-
-      generateButton.addEventListener('click', () => {
-        // Send the body text to the Prompt API
-        chrome.runtime.sendMessage({
-            action: 'getThreadAndGenerateResponse',
-            threadId: currentThreadId
-        });
-      });
-
-      //----------------REFINE REPLY BUTTON CLICKED----------------//
-
-      refineButton.addEventListener('click', () => {
-        const bodyText = replyBox.innerText;
-        console.log(bodyText)
-        if (bodyText) {
+        generateButton.addEventListener('click', () => {
           // Send the body text to the Prompt API
           chrome.runtime.sendMessage({
-            action: 'refineBodyText',
-            text: bodyText
+            action: 'getThreadAndGenerateResponse',
+            threadId: currentThreadId
           });
-        }
-        else{
-          alert("Body is Empty")
+        });
+      }
+
+
+      if (replyBox && !document.getElementById('refine-body-button') && flagRefineText) {
+        //----------------REFINE REPLY BUTTON----------------//
+
+        const refineButton = document.createElement('button');
+        refineButton.id = 'refine-body-button';
+        refineButton.textContent = 'Refine Body';
+        refineButton.style.cssText = `
+            padding: 6px 12px;
+            background-color: #1a73e8 !important;
+            color: white !important;
+            border: 1px solid #ccc !important;
+            border-radius: 5px !important;
+            cursor: pointer !important;
+            `;
+        replyBox.parentElement.appendChild(refineButton);
+
+        //----------------REFINE REPLY BUTTON CLICKED----------------//
+
+        refineButton.addEventListener('click', () => {
+          const bodyText = replyBox.innerText;
+          console.log(bodyText)
+          if (bodyText) {
+            // Send the body text to the Prompt API
+            chrome.runtime.sendMessage({
+              action: 'refineBodyText',
+              text: bodyText
+            });
+          }
+          else {
+            alert("Body is Empty")
+          }
+        });
+      }
+    } else {
+      // If the reply box is not available yet, use a MutationObserver to detect when it appears
+      const observer = new MutationObserver(() => {
+        const replyBox = document.querySelector('.editable[aria-label="Message Body"]');
+        if (replyBox) {
+          attachGenerateEmailButtonToReplyBox(currentThreadId);
+          observer.disconnect();  // Stop observing once the button is added
         }
       });
-    }
-  } else {
-    // If the reply box is not available yet, use a MutationObserver to detect when it appears
-    const observer = new MutationObserver(() => {
-      const replyBox = document.querySelector('.editable[aria-label="Message Body"]');
-      if (replyBox) {
-        attachGenerateEmailButtonToReplyBox(currentThreadId);
-        observer.disconnect();  // Stop observing once the button is added
-      }
-    });
 
-    // Start observing the DOM for changes
-    observer.observe(document.body, { childList: true, subtree: true });
-  }
+      // Start observing the DOM for changes
+      observer.observe(document.body, { childList: true, subtree: true });
+    }
+  });
 }
 
 //------------------------------------------------------------------------//
@@ -275,13 +291,13 @@ function attachGenerateEmailButtonToReplyBox(currentThreadId) {
 //------------------------------------------------------------------------//
 
 // Observe clicks to detect reply actions
-document.addEventListener('click', function(event) {
+document.addEventListener('click', function (event) {
   console.log('Clicked element:', event.target);  // Log the clicked element
   if (event.target && (event.target.matches('span[role="link"].ams.bkH') || event.target.textContent.trim() === 'Reply')) {
     console.log("Reply button clicked, using currentThreadId:", currentThreadId);
     if (currentThreadId) {
-        attachGenerateEmailButtonToReplyBox(currentThreadId);
-    } 
+      attachGenerateEmailButtonToReplyBox(currentThreadId);
+    }
     else {
       console.error("No thread ID found when replying.");
     }
@@ -310,16 +326,24 @@ const emailobserver = new MutationObserver(() => {
 
   emailRows.forEach(row => {
     row.addEventListener('click', () => {
-      const threadId = getThreadIdFromEmail(row);
-      if (threadId && threadId !== currentThreadId) {
-        currentThreadId = threadId;
-        console.log('Updated currentThreadId:', currentThreadId);
+      chrome.storage.sync.get(["summarize_thread", "highlight_phrases"], function (data) {
+        const flagSummarizeThread = data.summarize_thread !== false;
+        const flagHighlightPhrase = data.highlight_phrase !== false;
 
-        injectSummarizeButton(currentThreadId);  // Inject with new thread ID
-      }
-      if(currentThreadId){
-        chrome.runtime.sendMessage({ action: 'highlightPhrases', threadId: currentThreadId});
+        if (flagSummarizeThread) {
+          const threadId = getThreadIdFromEmail(row);
+          if (threadId && threadId !== currentThreadId) {
+            currentThreadId = threadId;
+            console.log('Updated currentThreadId:', currentThreadId);
+            if (flagSummarizeThread) {
+              injectSummarizeButton(currentThreadId);  // Inject with new thread ID
+            }
+          }
+          if (currentThreadId && flagHighlightPhrase) {
+            chrome.runtime.sendMessage({ action: 'highlightPhrases', threadId: currentThreadId });
+          }
         }
+      });
     });
   });
 });
@@ -386,7 +410,7 @@ function attachRefineButton() {
 
     //----------------REFINE BODY BUTTON CLICKED----------------//
 
-     refineButton.addEventListener('click', () => {
+    refineButton.addEventListener('click', () => {
       const bodyText = composeBox.innerText;
       if (bodyText) {
         // Send the body text to the Prompt API
@@ -395,11 +419,11 @@ function attachRefineButton() {
           text: bodyText
         });
       }
-      else{
+      else {
         alert("Body is Empty")
       }
     });
-    
+
     //----------------REFINE SUBJECT BUTTON CLICKED----------------//
 
     refineButton2.addEventListener('click', () => {
@@ -411,7 +435,7 @@ function attachRefineButton() {
           text: subText
         });
       }
-      else{
+      else {
         alert("Subject is Empty")
       }
     });
@@ -425,17 +449,17 @@ function attachRefineButton() {
 // Listen for refined text from the background script
 chrome.runtime.onMessage.addListener((request) => {
   if (request.action === "fillRefinedText" && request.refinedText) {
-      const composeBox = document.querySelector('.editable[aria-label="Message Body"]');
-      if (composeBox) {
-          composeBox.innerHTML = request.refinedText; // Replace with refined content
-          //attachRefineButton()
-      }
+    const composeBox = document.querySelector('.editable[aria-label="Message Body"]');
+    if (composeBox) {
+      composeBox.innerHTML = request.refinedText; // Replace with refined content
+      //attachRefineButton()
+    }
   }
-  else if(request.action === "fillRefinedSub" && request.refinedText) {
+  else if (request.action === "fillRefinedSub" && request.refinedText) {
     const subjectInput = document.querySelector('input[name="subjectbox"]');
     if (subjectInput) {
-        subjectInput.value = request.refinedText; // Replace with refined content
-        //attachRefineButton()
+      subjectInput.value = request.refinedText; // Replace with refined content
+      //attachRefineButton()
     }
-}
+  }
 });
