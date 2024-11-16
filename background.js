@@ -2,7 +2,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log('Received message:', request);
 
   //------------------------------------------------------------------------//
-  //-------------------FUNCTION TO ATTACH REFINE BUTTONS--------------------//
+  //--------------------GENERATE A REPLY FOR A THREAD-----------------------//
   //------------------------------------------------------------------------//
 
   if (request.action === 'getThreadAndGenerateResponse') {
@@ -60,7 +60,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   //------------------------------------------------------------------------//
-  //-------------------FUNCTION TO ATTACH REFINE BUTTONS--------------------//
+  //-----------------------------SUMMARIZE A THREAD-------------------------//
   //------------------------------------------------------------------------//
 
   else if (request.action === 'summarizeThread') {
@@ -122,7 +122,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   //------------------------------------------------------------------------//
-  //-------------------FUNCTION TO ATTACH REFINE BUTTONS--------------------//
+  //--------------OPENING A POP ON CLICKING COMPOSE BUTTON------------------//
   //------------------------------------------------------------------------//
 
   else if (request.action === 'showPopupInCompose') {
@@ -148,7 +148,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   //------------------------------------------------------------------------//
-  //-------------------FUNCTION TO ATTACH REFINE BUTTONS--------------------//
+  //-------------------GENERATE AN EMAIL BASED ON PROMPT--------------------//
   //------------------------------------------------------------------------//
 
   else if (request.action === "generateEmail") {
@@ -173,7 +173,7 @@ ${request.prompt}`;
   }
 
   //------------------------------------------------------------------------//
-  //-------------------FUNCTION TO ATTACH REFINE BUTTONS--------------------//
+  //---------------------REFINE BODY TEXT OF AN EMAIL-----------------------//
   //------------------------------------------------------------------------//
 
   else if (request.action === "refineBodyText") {
@@ -196,9 +196,11 @@ ${request.text}`;
 
     return true;
   }
+
   //------------------------------------------------------------------------//
-  //-------------------FUNCTION TO ATTACH REFINE BUTTONS--------------------//
+  //--------------------REFINE SUBJECT TEXT OF AN EMAIL---------------------//
   //------------------------------------------------------------------------//
+
   else if (request.action === "refineSubjectText") {
     const prompt = `Refine the following subject of an email for me. This should striclty contain only the subject of the email, any other text is prohibited :
 Subject of Email:
@@ -217,6 +219,10 @@ ${request.text}`;
 
     return true;
   }
+
+  //------------------------------------------------------------------------//
+  //----------------HIGHLIGHT IMPORTANT PHRASES IN AN EMAILL----------------//
+  //------------------------------------------------------------------------//
 
   else if (request.action === 'highlightPhrases') {
     const threadId = request.threadId;
@@ -296,6 +302,10 @@ chrome.runtime.onInstalled.addListener(() => {
   getOAuthToken();
 });
 
+//------------------------------------------------------------------------//
+//---------------------FUCNTION TO PROCESS THE PROMPT---------------------//
+//------------------------------------------------------------------------//
+
 async function processPrompt(prompt, actionType) {
   try {
     console.log(`Creating session for action: ${actionType}`);
@@ -309,6 +319,10 @@ async function processPrompt(prompt, actionType) {
     throw error;
   }
 }
+
+//------------------------------------------------------------------------//
+//---------------------FUCNTIONS FOR OAUTH.20 TOKENS----------------------//
+//------------------------------------------------------------------------//
 
 
 function getOAuthToken() {
@@ -372,7 +386,7 @@ async function getEmailMessage(token, threadId) {
       method: 'GET',
       headers: { 'Authorization': `Bearer ${token}` }
     });
-  
+
     if (!response.ok) throw new Error('Failed to fetch thread');
     const data = await response.json();
     console.log(data);
@@ -382,12 +396,16 @@ async function getEmailMessage(token, threadId) {
       sender: extractSenderInfo(msg),
       snippet: getMessageText(msg)
     }));
-    
+
   } catch (error) {
     console.error("Error fetching thread:", error);
     throw error;
   }
 }
+
+//------------------------------------------------------------------------//
+//-------------------FUCNTION TO GET SENDER INFORMATION-------------------//
+//------------------------------------------------------------------------//
 
 
 function extractSenderInfo(message) {
@@ -413,6 +431,11 @@ function extractSenderInfo(message) {
   return { senderName, senderEmail };
 }
 
+//------------------------------------------------------------------------//
+//----------------FUCNTION TO GET PLAIN TEXT FROM THE EMAIL---------------//
+//------------------------------------------------------------------------//
+
+
 function getMessageText(message) {
   const parts = message.payload.parts || [];
   let messageText = '';
@@ -436,6 +459,11 @@ function getMessageText(message) {
 
   return messageText || 'No message content found.';
 }
+
+//------------------------------------------------------------------------//
+//---------------------------UI OF COMPOSE POPUP--------------------------//
+//------------------------------------------------------------------------//
+
 
 function injectComposeUI() {
   const composeWindow = document.querySelector('.T-I.T-I-KE.L3');
