@@ -1,6 +1,11 @@
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log('Received message:', request);
 
+  
+  console.log('Received message:', request);
+  chrome.storage.sync.get(['feature1', 'feature2', 'feature3'], function(data) {
+    const flagFeature1 = data.feature1 !== false;
+    const flagFeature2 = data.feature2 !== false;
+    const flagFeature3 = data.feature3 !== false;
   //------------------------------------------------------------------------//
   //--------------------GENERATE A REPLY FOR A THREAD-----------------------//
   //------------------------------------------------------------------------//
@@ -63,7 +68,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   //-----------------------------SUMMARIZE A THREAD-------------------------//
   //------------------------------------------------------------------------//
 
-  else if (request.action === 'summarizeThread') {
+  else if (request.action === 'summarizeThread' && flagFeature3) {
     const threadId = request.threadId;
 
     // Get the OAuth token (you might already have it)
@@ -125,7 +130,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   //--------------OPENING A POP ON CLICKING COMPOSE BUTTON------------------//
   //------------------------------------------------------------------------//
 
-  else if (request.action === 'showPopupInCompose') {
+  else if (request.action === 'showPopupInCompose' && flagFeature1) {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs.length > 0 && tabs[0].url.includes("https://mail.google.com/")) {
         chrome.scripting.executeScript({
@@ -151,7 +156,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   //-------------------GENERATE AN EMAIL BASED ON PROMPT--------------------//
   //------------------------------------------------------------------------//
 
-  else if (request.action === "generateEmail") {
+  else if (request.action === "generateEmail" && flagFeature1) {
     const prompt = `Compose an email using the following context. The first line should be the subject, followed by the body text. Do not include any additional text or format deviations before or after the subject line. 
 
 Context:
@@ -295,6 +300,7 @@ ${request.text}`;
     // Return true to indicate we're sending a response asynchronously
     return true;
   }
+});
 });
 
 chrome.runtime.onInstalled.addListener(() => {

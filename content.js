@@ -1,5 +1,7 @@
 let currentPopup = null; 
 let obs = false;
+let currentThreadId = null;
+
 //------------------------------------------------------------------------//
 //--------------SHOW PROMPT POPUP ON CLICKING COMPOSE BUTTON--------------//
 //------------------------------------------------------------------------//
@@ -63,11 +65,9 @@ chrome.runtime.onMessage.addListener((request) => {
     console.log('Updated content with highlights:', content);
 
     // Update the email body with the highlighted content
-    emailBody.innerHTML = content;
+    emailBody.innerHTML = content; //try innetText instead.......................................................................
 }
 });
-
-let currentThreadId = null;
 
 //------------------------------------------------------------------------//
 //-----------------FUNCTION TO INJECT SUMMARIZATION BUTTON----------------//

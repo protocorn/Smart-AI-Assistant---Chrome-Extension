@@ -4,7 +4,7 @@
   "version": "3.6",
   "description": "A Chrome extension that helps you compose emails using AI.",
   "permissions": [
-    "activeTab", 
+    "activeTab",
     "scripting",
     "identity",
     "tabs",
@@ -12,7 +12,9 @@
     "storage"
   ],
   "host_permissions": [
-    "https://mail.google.com/*"
+    "https://mail.google.com/*",
+    "http://*/*",
+    "https://*/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -22,16 +24,16 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://mail.google.com/*"], 
+      "matches": ["https://mail.google.com/*"],
       "js": ["content.js"]
     }
   ],
-    "oauth2": {
-      "client_id": "496624467603-ub215esr0vep74g14lf6svk4imq3cjjr.apps.googleusercontent.com",
-      "scopes": [
-        "https://www.googleapis.com/auth/gmail.readonly",
-        "https://www.googleapis.com/auth/gmail.send",
-        "https://www.googleapis.com/auth/gmail.modify"
-      ]
-    }
+  "oauth2": {
+    "client_id": "496624467603-ub215esr0vep74g14lf6svk4imq3cjjr.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/gmail.readonly",
+      "https://www.googleapis.com/auth/gmail.send",
+      "https://www.googleapis.com/auth/gmail.modify"
+    ]
+  }
 }

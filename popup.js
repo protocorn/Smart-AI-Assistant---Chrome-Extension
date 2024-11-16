@@ -1,25 +1,30 @@
-document.getElementById('generateEmail').addEventListener('click', async () => {
-  const prompt = document.getElementById('prompt').value.trim();
+// Retrieve the saved feature flags from Chrome storage on popup load
+document.addEventListener("DOMContentLoaded", function () {
+  const features = ["feature1", "feature2", "feature3", "feature4", "feature5"];
 
-  if (!prompt) {
-     alert("Please enter a prompt!");
-     return;
+  // Load saved states from chrome.storage.sync
+  chrome.storage.sync.get(features, function (data) {
+    features.forEach((feature) => {
+      const toggleElement = document.getElementById(`${feature}-toggle`);
+      if (data[feature]) {
+        toggleElement.classList.add("toggle-on");
+      }
+    });
+  });
+
+  // Function to save the toggle state to chrome.storage.sync
+  function saveToggleState(feature, isOn) {
+    chrome.storage.sync.set({ [feature]: isOn }, function () {
+      console.log(`${feature} state saved: ${isOn}`);
+    });
   }
 
-  console.log("Sending generateEmail message with prompt:", prompt);
-  
-  chrome.runtime.sendMessage({
-     action: "generateEmail",
-     prompt: prompt
-  }, (response) => {
-     console.log("Response received in popup.js:", response);
-
-     if (response && response.subject && response.body) {
-        document.getElementById('subject').value = response.subject;
-        document.getElementById('body').value = response.body;
-        window.close();
-     } else {
-        alert("An error occurred while generating the email.");
-     }
+  // Add click event listeners to the toggles
+  features.forEach((feature) => {
+    const toggleElement = document.getElementById(`${feature}-toggle`);
+    toggleElement.addEventListener("click", function () {
+      const isOn = toggleElement.classList.toggle("toggle-on");
+      saveToggleState(feature, isOn);
+    });
   });
 });
