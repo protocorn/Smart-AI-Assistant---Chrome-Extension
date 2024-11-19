@@ -329,20 +329,18 @@ const emailobserver = new MutationObserver(() => {
       chrome.storage.sync.get(["summarize_thread", "highlight_phrases"], function (data) {
         const flagSummarizeThread = data.summarize_thread !== false;
         const flagHighlightPhrase = data.highlight_phrase !== false;
-
-        if (flagSummarizeThread) {
           const threadId = getThreadIdFromEmail(row);
           if (threadId && threadId !== currentThreadId) {
             currentThreadId = threadId;
             console.log('Updated currentThreadId:', currentThreadId);
-            if (flagSummarizeThread) {
+            if (currentThreadId && flagSummarizeThread) {
               injectSummarizeButton(currentThreadId);  // Inject with new thread ID
             }
+            if (currentThreadId && flagHighlightPhrase) {
+              chrome.runtime.sendMessage({ action: 'highlightPhrases', threadId: currentThreadId });
+            }
           }
-          if (currentThreadId && flagHighlightPhrase) {
-            chrome.runtime.sendMessage({ action: 'highlightPhrases', threadId: currentThreadId });
-          }
-        }
+        
       });
     });
   });

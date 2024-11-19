@@ -253,12 +253,13 @@ ${request.text}`;
           }).join("\n");
 
           // Add more details to the prompt for clarity and context
-          const prompt = `Analyze the following email and identify the key phrases (word-for-word) that you believe are most important for highlighting. Return the results in the following format:
+          const prompt = `Analyze the following email and identify the key phrases (word-for-word) that you believe are most important for highlighting. Return the results in the following format only:
 
-          1. [Important phrase 1]  
-          2. [Important phrase 2]  
+          1. Important phrase 1  
+          2. Important phrase 2  
           ...  
           (Include only the top 5-10 phrases that you consider highly important based on the content of the email.)
+  
 
           Here is the email content:
           ${emailContent}`;
