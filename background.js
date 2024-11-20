@@ -1,310 +1,345 @@
+function setCachedData(key, data, expirationMinutes) {
+  const expirationMS = expirationMinutes * 60 * 1000;
+  const item = {
+    value: data,
+    timestamp: Date.now(),
+    expiration: expirationMS
+  };
+  chrome.storage.local.set({ [key]: item });
+}
+
+function getCachedData(key, fetchFunction, expirationMinutes) {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get([key], function (result) {
+      const item = result[key];
+      const now = Date.now();
+      if (item && now - item.timestamp < item.expiration) {
+        // Data is still valid
+        resolve(item.value);
+      } else {
+        // Data is expired or doesn't exist, fetch new data
+        fetchFunction().then(data => {
+          setCachedData(key, data, expirationMinutes);
+          resolve(data);
+        }).catch(reject);
+      }
+    });
+  });
+}
+
+// In your background.js file
+
+async function summarizeThread(threadId) {
+  const cacheKey = `summary_${threadId}`;
+  const expirationMinutes = 60; // Cache summaries for 1 hour
+
+  try {
+    const summary = await getCachedData(cacheKey, async () => {
+      // This function will be called if the cache is invalid or missing
+      const token = await new Promise((resolve, reject) => {
+        chrome.identity.getAuthToken({ interactive: true }, (token) => {
+          if (chrome.runtime.lastError) {
+            reject(chrome.runtime.lastError);
+          } else {
+            resolve(token);
+          }
+        });
+      });
+
+      const messages = await getEmailThread(token, threadId);
+      const emailContent = messages.map(msg =>
+        `${msg.sender.senderName} (${msg.sender.senderEmail}): ${msg.snippet}`
+      ).join("\n");
+
+      const prompt = `Summarize the following email thread. Focus on: 
+        - Actionable points 
+        - Key decisions or next steps 
+        - Important questions asked or information provided: ${emailContent}`;
+
+      const summarizer = await ai.summarizer.create();
+      const summary = await summarizer.summarize(prompt);
+      summarizer.destroy();
+
+      return summary;
+    }, expirationMinutes);
+
+    return summary;
+  } catch (error) {
+    console.error("Error in summarizeThread:", error);
+    throw error;
+  }
+}
+
+async function highlightPhrases(threadId) {
+  const cacheKey = `highlight_${threadId}`;
+  const expirationMinutes = 60; // Cache highlights for 1 hour
+
+  try {
+    const phrases = await getCachedData(cacheKey, async () => {
+      // This function will be called if the cache is invalid or missing
+      const token = await new Promise((resolve, reject) => {
+        chrome.identity.getAuthToken({ interactive: true }, (token) => {
+          if (chrome.runtime.lastError) {
+            reject(chrome.runtime.lastError);
+          } else {
+            resolve(token);
+          }
+        });
+      });
+
+      const messages = await getEmailMessage(token, threadId);
+      const emailContent = messages.map(msg => 
+        `${msg.sender.senderName} (${msg.sender.senderEmail}): ${msg.snippet}`
+      ).join("\n");
+
+      const prompt = `Analyze the following email and identify the key phrases (word-for-word) that you believe are most important for highlighting. Return the results in the following format only:
+        1. Important phrase 1
+        2. Important phrase 2
+        ... (Include only the top 5-10 phrases that you consider highly important based on the content of the email.)
+        Here is the email content: ${emailContent}`;
+
+      const response = await processPrompt(prompt, 'Highlight Phrases');
+      const phrases = response
+        .split("\n")
+        .map(line => line.trim())
+        .filter(line => line.match(/^\d+\.\s+/))
+        .map(line => line.replace(/^\d+\.\s*/, "").trim());
+
+      return phrases;
+    }, expirationMinutes);
+
+    return phrases;
+  } catch (error) {
+    console.error("Error in highlightPhrases:", error);
+    throw error;
+  }
+}
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
-  
+
   console.log('Received message:', request);
-  chrome.storage.sync.get(["compose_email", "generate_reply", "refine_text", "summarize_thread", "highlight_phrase"], function(data) {
+  chrome.storage.sync.get(["compose_email", "generate_reply", "refine_text", "summarize_thread", "highlight_phrase"], function (data) {
     const flagComposeEmail = data.compose_email !== false;
     const flagGenerateReply = data.generate_reply !== false;
     const flagRefineText = data.refine_text !== false;
     const flagSummarizeThread = data.summarize_thread !== false;
     const flagHighlightPhrase = data.highlight_phrase !== false;
 
-  //------------------------------------------------------------------------//
-  //--------------------GENERATE A REPLY FOR A THREAD-----------------------//
-  //------------------------------------------------------------------------//
+    //------------------------------------------------------------------------//
+    //--------------------GENERATE A REPLY FOR A THREAD-----------------------//
+    //------------------------------------------------------------------------//
 
-  if (request.action === 'getThreadAndGenerateResponse' && flagGenerateReply) {
-    const threadId = request.threadId;
+    if (request.action === 'getThreadAndGenerateResponse' && flagGenerateReply) {
+      const threadId = request.threadId;
 
-    // Get the OAuth token (you might already have it)
-    chrome.identity.getAuthToken({ interactive: true }, (token) => {
-      if (chrome.runtime.lastError || !token) {
-        console.error("Authentication failed:", chrome.runtime.lastError);
-        sendResponse({ error: "Authentication failed" });
-        return;
-      }
+      // Get the OAuth token (you might already have it)
+      chrome.identity.getAuthToken({ interactive: true }, (token) => {
+        if (chrome.runtime.lastError || !token) {
+          console.error("Authentication failed:", chrome.runtime.lastError);
+          sendResponse({ error: "Authentication failed" });
+          return;
+        }
 
-      // Call Gmail API to get the thread
-      getEmailThread(token, threadId)
-        .then((messages) => {
-          // Generate a response based on the thread content
-          const emailContent = messages.map(msg => {
-            // Include both the message snippet and the sender context
-            return `${msg.sender.senderName} (${msg.sender.senderEmail}): ${msg.snippet}`;
-          }).join("\n");
+        // Call Gmail API to get the thread
+        getEmailThread(token, threadId)
+          .then((messages) => {
+            // Generate a response based on the thread content
+            const emailContent = messages.map(msg => {
+              // Include both the message snippet and the sender context
+              return `${msg.sender.senderName} (${msg.sender.senderEmail}): ${msg.snippet}`;
+            }).join("\n");
 
-          // Add more details to the prompt for clarity and context
-          const prompt = `See the following thread, and write a reply email in ENGLISH from my side. This should strictly contain only the body of the mail:
-          ${emailContent}`;
+            // Add more details to the prompt for clarity and context
+            const prompt = `See the following thread, and write a reply email in ENGLISH from my side. This should strictly contain only the body of the mail:
+              ${emailContent}`;
 
-          console.log("Prompt being sent to AI model: ", prompt);
+            console.log("Prompt being sent to AI model: ", prompt);
 
-          processPrompt(prompt, 'Generate Email').then(response => {
-            const subject = response.split("\n")[0];
-            const body = response.split("\n").slice(1).join("\n");
-            // Send subject and body back to content.js for direct insertion
-            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-              if (tabs.length > 0) {
-                const tab = tabs[0];
-                if (tab.url && tab.url.includes("https://mail.google.com/")) {
-                  chrome.tabs.sendMessage(tab.id, { action: "fillEmail", subject, body });
-                } else {
-                  console.error("No active Gmail tab found.");
-                  sendResponse({ error: "No active Gmail tab found." });
-                }
-              } else {
-                console.error("No active tabs found.");
-                sendResponse({ error: "No active tabs found." });
-              }
-            });
-            sendResponse({ success: true });
-          })();
-        });
-
-    });
-
-    // Return true to indicate we're sending a response asynchronously
-    return true;
-  }
-
-  //------------------------------------------------------------------------//
-  //-----------------------------SUMMARIZE A THREAD-------------------------//
-  //------------------------------------------------------------------------//
-
-  else if (request.action === 'summarizeThread' && flagSummarizeThread) {
-    const threadId = request.threadId;
-
-    // Get the OAuth token (you might already have it)
-    chrome.identity.getAuthToken({ interactive: true }, (token) => {
-      if (chrome.runtime.lastError || !token) {
-        console.error("Authentication failed:", chrome.runtime.lastError);
-        sendResponse({ error: "Authentication failed" });
-        return;
-      }
-
-      // Call Gmail API to get the thread
-      getEmailThread(token, threadId)
-        .then((messages) => {
-          // Generate a response based on the thread content
-          const emailContent = messages.map(msg => {
-            // Include both the message snippet and the sender context
-            return `${msg.sender.senderName} (${msg.sender.senderEmail}): ${msg.snippet}`;
-          }).join("\n");
-
-          // Add more details to the prompt for clarity and context
-          const prompt = `Summarize this:
-          ${emailContent}`;
-
-          console.log("Prompt being sent to AI model: ", prompt);
-
-          (async () => {
-            try {
-              console.log("Creating language model session...");
-              summarizer = await ai.summarizer.create();
-
-              console.log("Sending prompt:",);
-              const result2 = await summarizer.summarize(prompt);
-
-              console.log(result2)
-
-              // Send the summary back to content.js
+            processPrompt(prompt, 'Generate Email').then(response => {
+              const subject = response.split("\n")[0];
+              const body = response.split("\n").slice(1).join("\n");
+              // Send subject and body back to content.js for direct insertion
               chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
                 if (tabs.length > 0) {
-                  chrome.tabs.sendMessage(tabs[0].id, { action: "displaySummary", summary: result2 });
-                  summarizer.destroy();
+                  const tab = tabs[0];
+                  if (tab.url && tab.url.includes("https://mail.google.com/")) {
+                    chrome.tabs.sendMessage(tab.id, { action: "fillEmail", subject, body });
+                  } else {
+                    console.error("No active Gmail tab found.");
+                    sendResponse({ error: "No active Gmail tab found." });
+                  }
+                } else {
+                  console.error("No active tabs found.");
+                  sendResponse({ error: "No active tabs found." });
                 }
               });
-
               sendResponse({ success: true });
+            })();
+          });
 
-            } catch (error) {
-              console.error("Error generating email:", error);
-              sendResponse({ error: "Failed to generate email." });
+      });
+
+      // Return true to indicate we're sending a response asynchronously
+      return true;
+    }
+
+    //------------------------------------------------------------------------//
+    //-----------------------------SUMMARIZE A THREAD-------------------------//
+    //------------------------------------------------------------------------//
+
+    else if (request.action === 'summarizeThread' && flagSummarizeThread) {
+      const threadId = request.threadId;
+
+      // Get the OAuth token (you might already have it)
+      chrome.identity.getAuthToken({ interactive: true }, (token) => {
+        if (chrome.runtime.lastError || !token) {
+          console.error("Authentication failed:", chrome.runtime.lastError);
+          sendResponse({ error: "Authentication failed" });
+          return;
+        }
+
+      });
+
+      summarizeThread(threadId)
+        .then(summary => {
+          chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs.length > 0) {
+              chrome.tabs.sendMessage(tabs[0].id, { action: "displaySummary", summary: summary });
             }
-          })();
+          });
+          sendResponse({ success: true });
+        })
+        .catch(error => {
+          console.error("Error:", error);
+          sendResponse({ error: "Failed to summarize thread." });
         });
-    });
+      return true; // Indicates an asynchronous response
+    }
 
-    // Return true to indicate we're sending a response asynchronously
-    return true;
-  }
+    //------------------------------------------------------------------------//
+    //--------------OPENING A POP ON CLICKING COMPOSE BUTTON------------------//
+    //------------------------------------------------------------------------//
 
-  //------------------------------------------------------------------------//
-  //--------------OPENING A POP ON CLICKING COMPOSE BUTTON------------------//
-  //------------------------------------------------------------------------//
+    else if (request.action === 'showPopupInCompose' && flagComposeEmail) {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs.length > 0 && tabs[0].url.includes("https://mail.google.com/")) {
+          chrome.scripting.executeScript({
+            target: { tabId: tabs[0].id },
+            func: injectComposeUI
+          }, () => {
+            if (chrome.runtime.lastError) {
+              console.error("Failed to inject content script:", chrome.runtime.lastError);
+              sendResponse({ error: "Failed to inject content script." });
+            } else {
+              sendResponse({ success: true });
+            }
+          });
+        } else {
+          console.error("No active Gmail tab found.");
+          sendResponse({ error: "No active Gmail tab found." });
+        }
+      });
+      return true; // Keeps sendResponse valid for async use
+    }
 
-  else if (request.action === 'showPopupInCompose' && flagComposeEmail) {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs.length > 0 && tabs[0].url.includes("https://mail.google.com/")) {
-        chrome.scripting.executeScript({
-          target: { tabId: tabs[0].id },
-          func: injectComposeUI
-        }, () => {
-          if (chrome.runtime.lastError) {
-            console.error("Failed to inject content script:", chrome.runtime.lastError);
-            sendResponse({ error: "Failed to inject content script." });
-          } else {
-            sendResponse({ success: true });
+    //------------------------------------------------------------------------//
+    //-------------------GENERATE AN EMAIL BASED ON PROMPT--------------------//
+    //------------------------------------------------------------------------//
+
+    else if (request.action === "generateEmail" && flagComposeEmail) {
+      const prompt = `Compose an email using the following context. The first line should be the subject, followed by the body text. Do not include any additional text or format deviations before or after the subject line. 
+
+    Context:
+    ${request.prompt}`;
+      processPrompt(prompt, 'Generate Email').then(response => {
+        const subject = response.split("\n")[0];
+        const body = response.split("\n").slice(1).join("\n");
+        // Send subject and body back to content.js for direct insertion
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          if (tabs.length > 0) {
+            chrome.tabs.sendMessage(tabs[0].id, { action: "fillEmail", subject, body });
           }
         });
-      } else {
-        console.error("No active Gmail tab found.");
-        sendResponse({ error: "No active Gmail tab found." });
-      }
-    });
-    return true; // Keeps sendResponse valid for async use
-  }
 
-  //------------------------------------------------------------------------//
-  //-------------------GENERATE AN EMAIL BASED ON PROMPT--------------------//
-  //------------------------------------------------------------------------//
-
-  else if (request.action === "generateEmail" && flagComposeEmail) {
-    const prompt = `Compose an email using the following context. The first line should be the subject, followed by the body text. Do not include any additional text or format deviations before or after the subject line. 
-
-Context:
-${request.prompt}`;
-    processPrompt(prompt, 'Generate Email').then(response => {
-      const subject = response.split("\n")[0];
-      const body = response.split("\n").slice(1).join("\n");
-      // Send subject and body back to content.js for direct insertion
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (tabs.length > 0) {
-          chrome.tabs.sendMessage(tabs[0].id, { action: "fillEmail", subject, body });
-        }
+        sendResponse({ success: true });
       });
 
-      sendResponse({ success: true });
-    });
+      return true;
+    }
 
-    return true;
-  }
+    //------------------------------------------------------------------------//
+    //---------------------REFINE BODY TEXT OF AN EMAIL-----------------------//
+    //------------------------------------------------------------------------//
 
-  //------------------------------------------------------------------------//
-  //---------------------REFINE BODY TEXT OF AN EMAIL-----------------------//
-  //------------------------------------------------------------------------//
+    else if (request.action === "refineBodyText" && flagRefineText) {
+      const prompt = `Refine the following email for me. This should striclty contain the body of the email and other additional details are not needed. Not even the subject.:
+    Email:
+    ${request.text}`;
 
-  else if (request.action === "refineBodyText" && flagRefineText) {
-    const prompt = `Refine the following email for me. This should striclty contain the body of the email and other additional details are not needed. Not even the subject.:
-Email:
-${request.text}`;
+      processPrompt(prompt, 'Refine Body').then(response => {
+        // Send subject and body back to content.js for direct insertion
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          if (tabs.length > 0) {
+            chrome.tabs.sendMessage(tabs[0].id, { action: "fillRefinedText", refinedText: response });
+          }
 
-    processPrompt(prompt, 'Refine Body').then(response => {
-      // Send subject and body back to content.js for direct insertion
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (tabs.length > 0) {
-          chrome.tabs.sendMessage(tabs[0].id, { action: "fillRefinedText", refinedText: response });
-        }
-
-      });
-
-      sendResponse({ success: true });
-    });
-
-
-    return true;
-  }
-
-  //------------------------------------------------------------------------//
-  //--------------------REFINE SUBJECT TEXT OF AN EMAIL---------------------//
-  //------------------------------------------------------------------------//
-
-  else if (request.action === "refineSubjectText" && flagRefineText) {
-    const prompt = `Refine the following subject of an email for me. This should striclty contain only the subject of the email, any other text is prohibited :
-Subject of Email:
-${request.text}`;
-    processPrompt(prompt, 'Refine Subject').then(response => {
-      // Send subject and body back to content.js for direct insertion
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (tabs.length > 0) {
-          chrome.tabs.sendMessage(tabs[0].id, { action: "fillRefinedSub", refinedText: response });
-        }
-
-      });
-
-      sendResponse({ success: true });
-    });
-
-    return true;
-  }
-
-  //------------------------------------------------------------------------//
-  //----------------HIGHLIGHT IMPORTANT PHRASES IN AN EMAILL----------------//
-  //------------------------------------------------------------------------//
-
-  else if (request.action === 'highlightPhrases' && flagHighlightPhrase) {
-    const threadId = request.threadId;
-
-    // Get the OAuth token (you might already have it)
-    chrome.identity.getAuthToken({ interactive: true }, (token) => {
-      if (chrome.runtime.lastError || !token) {
-        console.error("Authentication failed:", chrome.runtime.lastError);
-        sendResponse({ error: "Authentication failed" });
-        return;
-      }
-
-      // Call Gmail API to get the thread
-      getEmailMessage(token, threadId)
-        .then((messages) => {
-          // Generate a response based on the thread content
-          const emailContent = messages.map(msg => {
-            // Include both the message snippet and the sender context
-            return `${msg.sender.senderName} (${msg.sender.senderEmail}): ${msg.snippet}`;
-          }).join("\n");
-
-          // Add more details to the prompt for clarity and context
-          const prompt = `Analyze the following email and identify the key phrases (word-for-word) that you believe are most important for highlighting. Return the results in the following format only:
-
-          1. Important phrase 1  
-          2. Important phrase 2  
-          ...  
-          (Include only the top 5-10 phrases that you consider highly important based on the content of the email.)
-  
-
-          Here is the email content:
-          ${emailContent}`;
-
-          console.log("Prompt being sent to AI model: ", prompt);
-
-          processPrompt(prompt, 'Highlight Phrases').then(response => {
-            console.log(response)
-
-            const phrases = response
-              .split("\n") // Split response by lines
-              .map(line => line.trim()) // Trim each line to avoid leading/trailing spaces
-              .filter(line => line.match(/^\d+\.\s+/)) // Match lines that start with "1." or "2." etc.
-              .map(line => {
-                // Remove the number and period (e.g., "1." -> "")
-                return line.replace(/^\d+\.\s*/, "").trim();
-              });
-
-            console.log(phrases)
-
-            // Send subject and body back to content.js for direct insertion
-            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-              if (tabs.length > 0) {
-                const tab = tabs[0];
-                if (tab.url && tab.url.includes("https://mail.google.com/")) {
-                  chrome.tabs.sendMessage(tab.id, { action: "highlight", phrase: phrases, email: emailContent });
-                } else {
-                  console.error("No active Gmail tab found.");
-                  sendResponse({ error: "No active Gmail tab found." });
-                }
-              } else {
-                console.error("No active tabs found.");
-                sendResponse({ error: "No active tabs found." });
-              }
-            });
-            sendResponse({ success: true });
-          });
         });
 
-    });
+        sendResponse({ success: true });
+      });
 
-    // Return true to indicate we're sending a response asynchronously
-    return true;
-  }
-});
+
+      return true;
+    }
+
+    //------------------------------------------------------------------------//
+    //--------------------REFINE SUBJECT TEXT OF AN EMAIL---------------------//
+    //------------------------------------------------------------------------//
+
+    else if (request.action === "refineSubjectText" && flagRefineText) {
+      const prompt = `Refine the following subject of an email for me. This should striclty contain only the subject of the email, any other text is prohibited :
+    Subject of Email:
+    ${request.text}`;
+      processPrompt(prompt, 'Refine Subject').then(response => {
+        // Send subject and body back to content.js for direct insertion
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          if (tabs.length > 0) {
+            chrome.tabs.sendMessage(tabs[0].id, { action: "fillRefinedSub", refinedText: response });
+          }
+
+        });
+
+        sendResponse({ success: true });
+      });
+
+      return true;
+    }
+
+    //------------------------------------------------------------------------//
+    //----------------HIGHLIGHT IMPORTANT PHRASES IN AN EMAILL----------------//
+    //------------------------------------------------------------------------//
+
+    else if (request.action === 'highlightPhrases' && flagHighlightPhrase) {
+      const threadId = request.threadId;
+
+      
+      highlightPhrases(threadId)
+      .then(phrases => {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          if (tabs.length > 0) {
+            chrome.tabs.sendMessage(tabs[0].id, { action: "highlight", phrase: phrases });
+          }
+        });
+        sendResponse({ success: true });
+      })
+      .catch(error => {
+        console.error("Error:", error);
+        sendResponse({ error: "Failed to highlight phrases." });
+      });
+    return true; // Indicates an asynchronous response
+    }
+  });
 });
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -488,13 +523,13 @@ function injectComposeUI() {
   const uiContainer = document.createElement('div');
   uiContainer.id = 'compose-ui-container';
   uiContainer.innerHTML = `
-    <div style="position: absolute; top: 50px; left: 20px; background-color: #fff; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); z-index: 10000;">
-      <h4>Generate Email</h4>
-      <button id="closePopup" style="position: absolute; top: 5px; right: 5px; background: none; border: none; font-size: 16px; cursor: pointer;">✖</button>
-      <input type="text" id="prompt" placeholder="Enter prompt for email" style="width: 94%; margin-bottom: 10px; padding: 8px;" />
-      <button id="generateEmail" style="width: 100%; padding: 10px; background-color: #4CAF50; color: white; font-size: 14px; border: none; cursor: pointer;">Generate Email</button>
-    </div>
-  `;
+        <div style="position: absolute; top: 50px; left: 20px; background-color: #fff; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); z-index: 10000;">
+          <h4>Generate Email</h4>
+          <button id="closePopup" style="position: absolute; top: 5px; right: 5px; background: none; border: none; font-size: 16px; cursor: pointer;">✖</button>
+          <input type="text" id="prompt" placeholder="Enter prompt for email" style="width: 94%; margin-bottom: 10px; padding: 8px;" />
+          <button id="generateEmail" style="width: 100%; padding: 10px; background-color: #4CAF50; color: white; font-size: 14px; border: none; cursor: pointer;">Generate Email</button>
+        </div>
+      `;
 
   document.body.appendChild(uiContainer);
 

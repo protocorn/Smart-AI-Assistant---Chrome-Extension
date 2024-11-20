@@ -108,6 +108,8 @@ function injectSummarizeButton(threadId) {
   obs = true;
 
   summarizeButton.addEventListener('click', () => {
+    summarizeButton.disabled = true;
+    summarizeButton.textContent = 'Summarizing...';
     chrome.runtime.sendMessage({ action: 'summarizeThread', threadId });
   });
 }
@@ -118,6 +120,9 @@ function injectSummarizeButton(threadId) {
 
 // Display the summary popup with "Regenerate Summary" option
 function displaySummaryPopup(summary) {
+  const summarizeButton = document.getElementById('summarize-thread-button');
+  summarizeButton.disabled = false;
+    summarizeButton.textContent = 'Summarize Thread';
   if (currentPopup) {
     // If popup already exists, update the content
     currentPopup.querySelector('p').textContent = summary;
