@@ -122,7 +122,7 @@ function injectSummarizeButton(threadId) {
 function displaySummaryPopup(summary) {
   const summarizeButton = document.getElementById('summarize-thread-button');
   summarizeButton.disabled = false;
-    summarizeButton.textContent = 'Summarize Thread';
+  summarizeButton.textContent = 'Summarize Thread';
   if (currentPopup) {
     // If popup already exists, update the content
     currentPopup.querySelector('p').textContent = summary;
@@ -334,18 +334,18 @@ const emailobserver = new MutationObserver(() => {
       chrome.storage.sync.get(["summarize_thread", "highlight_phrases"], function (data) {
         const flagSummarizeThread = data.summarize_thread !== false;
         const flagHighlightPhrase = data.highlight_phrase !== false;
-          const threadId = getThreadIdFromEmail(row);
-          if (threadId && threadId !== currentThreadId) {
-            currentThreadId = threadId;
-            console.log('Updated currentThreadId:', currentThreadId);
-            if (currentThreadId && flagSummarizeThread) {
-              injectSummarizeButton(currentThreadId);  // Inject with new thread ID
-            }
-            if (currentThreadId && flagHighlightPhrase) {
-              chrome.runtime.sendMessage({ action: 'highlightPhrases', threadId: currentThreadId });
-            }
+        const threadId = getThreadIdFromEmail(row);
+        if (threadId && threadId !== currentThreadId) {
+          currentThreadId = threadId;
+          console.log('Updated currentThreadId:', currentThreadId);
+          if (currentThreadId && flagSummarizeThread) {
+            injectSummarizeButton(currentThreadId);  // Inject with new thread ID
           }
-        
+          if (currentThreadId && flagHighlightPhrase) {
+            chrome.runtime.sendMessage({ action: 'highlightPhrases', threadId: currentThreadId });
+          }
+        }
+
       });
     });
   });
@@ -364,18 +364,29 @@ function attachRefineButton() {
 
   if (composeBox && !document.getElementById('refine-buttons-container')) {
 
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = `
+      position: relative;
+      width: 100%;
+    `;
+    composeBox.parentNode.insertBefore(wrapper, composeBox);
+    wrapper.appendChild(composeBox);
+
     //----------------REFINE BUTTONS CONTAINER----------------//
 
     const buttonsContainer = document.createElement('div');
     buttonsContainer.id = 'refine-buttons-container';
     buttonsContainer.style.cssText = `
-        position: sticky;  /* Position relative to compose box container */
-        top: 10px;  /* Adjust to desired vertical position */
-        right: 10px;
-        display: flex;  /* Use flexbox for side-by-side layout */
-        gap: 10px;  /* Add spacing between buttons */
-        z-index: 10000;  /* High z-index to ensure visibility */
-    `;
+    position: sticky;
+      top: 100px;
+      right: 10px;
+      display: flex;
+      gap: 10px;
+      z-index: 1000;
+      padding: 5px;
+      margin-top:-40px;
+      border-bottom: 1px solid #dadce0;
+   `;
 
     //----------------REFINE BUTTON FOR BODY----------------//
 
@@ -383,33 +394,39 @@ function attachRefineButton() {
     refineButton.id = 'refine-body-button';
     refineButton.textContent = 'Refine Body';
     refineButton.style.cssText = `
-        padding: 6px 12px;
-        background-color: #1a73e8 !important;
-        color: white !important;
-        border: 1px solid #ccc !important;
-        border-radius: 5px !important;
-        cursor: pointer !important;
+      padding: 6px 12px;
+      background-color: #1a73e8;
+      color: white;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      cursor: pointer;
     `;
 
     //----------------REFINE BUTTON FOR SUBJECT----------------//
 
+    // Create refine subject button
     const refineButton2 = document.createElement('button');
     refineButton2.id = 'refine-subject-button';
     refineButton2.textContent = 'Refine Subject';
     refineButton2.style.cssText = `
        padding: 6px 12px;
-       margin-left: 10px;
-        background-color: #1a73e8 !important;
-        color: white !important;
-        border: 1px solid #ccc !important;
-        border-radius: 5px !important;
-        cursor: pointer !important;
-    `;
+       background-color: #1a73e8;
+       color: white;
+       border: 1px solid #ccc;
+       border-radius: 5px;
+       cursor: pointer;
+     `;
 
     // Append buttons to the container instead of composeBox
-    composeBox.parentElement.appendChild(buttonsContainer);
+    //composeBox.parentElement.appendChild(buttonsContainer);
     buttonsContainer.appendChild(refineButton);
     buttonsContainer.appendChild(refineButton2);
+
+    // Append the container to the wrapper
+    wrapper.appendChild(buttonsContainer);
+
+    // Add padding to the compose box to prevent text from being covered
+    composeBox.style.paddingRight = '220px'; // Adjust this value as needed
 
     //----------------REFINE BODY BUTTON CLICKED----------------//
 
