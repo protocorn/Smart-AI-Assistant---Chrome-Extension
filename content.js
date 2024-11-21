@@ -20,7 +20,7 @@ const observer = new MutationObserver(() => {
           chrome.runtime.sendMessage({ action: 'showPopupInCompose' });
         }
         if (flagRefineText) {
-          setTimeout(attachRefineButton, 500);
+          setTimeout(attachAIbuttons, 500);
         }
       });
     });
@@ -270,12 +270,15 @@ function attachGenerateEmailButtonToReplyBox(currentThreadId) {
         refineButton.id = 'refine-body-button';
         refineButton.textContent = 'Refine Body';
         refineButton.style.cssText = `
+            position: sticky;
+            top: ${replyBox.offsetTop + 5}px;
             padding: 6px 12px;
-            background-color: #1a73e8 !important;
-            color: white !important;
-            border: 1px solid #ccc !important;
-            border-radius: 5px !important;
-            cursor: pointer !important;
+            background-color: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            z-index: 10000;
             `;
         replyBox.parentElement.appendChild(refineButton);
 
@@ -379,7 +382,7 @@ emailobserver.observe(document.body, { childList: true, subtree: true });
 //------------------------------------------------------------------------//
 
 // Function to attach the Refine button in the compose box
-function attachRefineButton() {
+function attachAIbuttons() {
   const composeBox = document.querySelector('.editable[aria-label="Message Body"]');
   const subjectInput = document.querySelector('input[name="subjectbox"]');
 
@@ -399,7 +402,7 @@ function attachRefineButton() {
     buttonsContainer.id = 'AI-buttons-container';
     buttonsContainer.style.cssText = `
     position: sticky;
-      top: 100px;
+      top: ${composeBox.offsetTop + 5}px;
       right: 10px;
       display: flex;
       gap: 10px;
@@ -519,14 +522,12 @@ chrome.runtime.onMessage.addListener((request) => {
     const composeBox = document.querySelector('.editable[aria-label="Message Body"]');
     if (composeBox) {
       composeBox.innerHTML = request.refinedText; // Replace with refined content
-      //attachRefineButton()
     }
   }
   else if (request.action === "fillRefinedSub" && request.refinedText) {
     const subjectInput = document.querySelector('input[name="subjectbox"]');
     if (subjectInput) {
       subjectInput.value = request.refinedText; // Replace with refined content
-      //attachRefineButton()
     }
   }
 });
