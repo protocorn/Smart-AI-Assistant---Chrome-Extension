@@ -45,9 +45,15 @@ chrome.runtime.onMessage.addListener((request) => {
       bodyInput.innerHTML = request.body;
     }
   } 
-  
+
   if (request.action === "displaySummary" && request.summary) {
     displaySummaryPopup(request.summary);  // Call the popup display function for summaries
+  }
+
+  if(request.action === "changeSummaryButton"){
+    const summarizeButton = document.getElementById('summarize-thread-button');
+    summarizeButton.disabled = false;
+    summarizeButton.textContent = 'Summarize Thread';
   }
 
   if (request.action === 'highlight') {
@@ -126,9 +132,16 @@ function displaySummaryPopup(summary) {
   const summarizeButton = document.getElementById('summarize-thread-button');
   summarizeButton.disabled = false;
   summarizeButton.textContent = 'Summarize Thread';
+
+  // Format the summary with line breaks for bullets
+  const formattedSummary = summary
+    .split('\n')
+    .map(line => line.trim().startsWith('*') ? `<li>${line.slice(1).trim()}</li>` : line)
+    .join('');
+
   if (currentPopup) {
     // If popup already exists, update the content
-    currentPopup.querySelector('p').textContent = summary;
+    currentPopup.querySelector('.summary-content').innerHTML = `<ul>${formattedSummary}</ul>`;
   } else {
     // Create a new popup if it doesn't exist
     currentPopup = document.createElement('div');
@@ -143,14 +156,18 @@ function displaySummaryPopup(summary) {
         border: 1px solid #ddd;
         border-radius: 5px;
         max-width: 300px;
+        max-height: 400px;
+        overflow-y: auto;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         z-index: 1000;
     `;
 
     currentPopup.innerHTML = `
         <h4>Thread Summary</h4>
-        <p>${summary}</p>
-        <button id="regenerate-summary">Regenerate Summary</button>
+        <div class="summary-content" style="margin-bottom: 10px;">
+          <ul>${formattedSummary}</ul>
+        </div>
+        <button id="regenerate-summary" style="margin-right: 10px;">Regenerate Summary</button>
         <button id="close-summary-popup">Close</button>
     `;
 
@@ -158,7 +175,7 @@ function displaySummaryPopup(summary) {
 
     // Event listener for the Regenerate Summary button
     document.getElementById('regenerate-summary').addEventListener('click', () => {
-      chrome.runtime.sendMessage({ action: 'summarizeThread', threadId: currentThreadId });
+      chrome.runtime.sendMessage({ action: 're-summarizeThread', threadId: currentThreadId });
     });
 
     // Event listener for the Close button
@@ -168,6 +185,7 @@ function displaySummaryPopup(summary) {
     });
   }
 }
+
 
 //------------------------------------------------------------------------//
 //---------------FUNCTION TO REMOVE THE SUMMARIZATION BUTTON--------------//
@@ -365,7 +383,7 @@ function attachRefineButton() {
   const composeBox = document.querySelector('.editable[aria-label="Message Body"]');
   const subjectInput = document.querySelector('input[name="subjectbox"]');
 
-  if (composeBox && !document.getElementById('refine-buttons-container')) {
+  if (composeBox && !document.getElementById('AI-buttons-container')) {
 
     const wrapper = document.createElement('div');
     wrapper.style.cssText = `
@@ -378,7 +396,7 @@ function attachRefineButton() {
     //----------------REFINE BUTTONS CONTAINER----------------//
 
     const buttonsContainer = document.createElement('div');
-    buttonsContainer.id = 'refine-buttons-container';
+    buttonsContainer.id = 'AI-buttons-container';
     buttonsContainer.style.cssText = `
     position: sticky;
       top: 100px;
@@ -420,10 +438,23 @@ function attachRefineButton() {
        cursor: pointer;
      `;
 
+    const composeButton = document.createElement('button');
+    composeButton.id = 'compose-button';
+    composeButton.textContent = 'Generate Email';
+    composeButton.style.cssText = `
+      padding: 6px 12px;
+      background-color: #1a73e8;
+      color: white;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      cursor: pointer;
+    `;
+
     // Append buttons to the container instead of composeBox
     //composeBox.parentElement.appendChild(buttonsContainer);
     buttonsContainer.appendChild(refineButton);
     buttonsContainer.appendChild(refineButton2);
+    buttonsContainer.appendChild(composeButton);
 
     // Append the container to the wrapper
     wrapper.appendChild(buttonsContainer);
@@ -462,6 +493,19 @@ function attachRefineButton() {
         alert("Subject is Empty")
       }
     });
+
+    composeButton.addEventListener('click', () => {
+      chrome.storage.sync.get(["compose_email"], function (data) {
+        const flagComposeEmail = data.compose_email !== false;
+        if (flagComposeEmail) {
+          if(!document.getElementById('compose-ui-container'))
+          {
+          chrome.runtime.sendMessage({ action: 'showPopupInCompose' });
+          }
+        }
+      });
+    });
+
   }
 }
 

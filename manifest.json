@@ -9,7 +9,8 @@
     "identity",
     "tabs",
     "identity.email",
-    "storage"
+    "storage",
+    "notifications"
   ],
   "host_permissions": [
     "https://mail.google.com/*",
