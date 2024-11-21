@@ -1,4 +1,5 @@
 function setCachedData(key, data, expirationMinutes) {
+  try{
   const expirationMS = expirationMinutes * 60 * 1000;
   const item = {
     value: data,
@@ -6,22 +7,27 @@ function setCachedData(key, data, expirationMinutes) {
     expiration: expirationMS
   };
   chrome.storage.local.set({ [key]: item });
+}catch (error) {
+  console.error("Error in setCachedData:", error);
+}
 }
 
 function getCachedData(key, fetchFunction, expirationMinutes) {
   return new Promise((resolve, reject) => {
-    chrome.storage.local.get([key], function (result) {
-      const item = result[key];
-      const now = Date.now();
-      if (item && now - item.timestamp < item.expiration) {
-        // Data is still valid
-        resolve(item.value);
-      } else {
-        // Data is expired or doesn't exist, fetch new data
-        fetchFunction().then(data => {
+    chrome.storage.local.get([key], async function (result) {
+      try {
+        const item = result[key];
+        const now = Date.now();
+        if (item && now - item.timestamp < item.expiration) {
+          resolve(item.value);
+        } else {
+          const data = await fetchFunction();
           setCachedData(key, data, expirationMinutes);
           resolve(data);
-        }).catch(reject);
+        }
+      } catch (error) {
+        console.error("Error in getCachedData:", error);
+        reject(error);
       }
     });
   });
@@ -65,8 +71,12 @@ async function summarizeThread(threadId) {
 
     return summary;
   } catch (error) {
+    const summarizeButton = document.getElementById('summarize-thread-button');
+    summarizeButton.disabled = false;
+    summarizeButton.textContent = 'Summarize Thread';
+
     console.error("Error in summarizeThread:", error);
-    throw error;
+    throw new Error("Failed to summarize the thread. Please try again.");
   }
 }
 
@@ -92,7 +102,7 @@ async function highlightPhrases(threadId) {
         `${msg.sender.senderName} (${msg.sender.senderEmail}): ${msg.snippet}`
       ).join("\n");
 
-      const prompt = `Analyze the following email and identify the key phrases (word-for-word) that you believe are most important for highlighting. Return the results in the following format only:
+      const prompt = `Give the following result only in English. Analyze the following email and identify the key phrases (word-for-word) that you believe are most important for highlighting. Return the results in the following format only:
         1. Important phrase 1
         2. Important phrase 2
         ... (Include only the top 5-10 phrases that you consider highly important based on the content of the email.)
@@ -119,7 +129,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 
   console.log('Received message:', request);
-  chrome.storage.sync.get(["compose_email", "generate_reply", "refine_text", "summarize_thread", "highlight_phrase"], function (data) {
+
+  try{
+  chrome.storage.sync.get(["compose_email", "generate_reply", "refine_text", "summarize_thread", "highlight_phrase"], async function (data) {
     const flagComposeEmail = data.compose_email !== false;
     const flagGenerateReply = data.generate_reply !== false;
     const flagRefineText = data.refine_text !== false;
@@ -188,7 +200,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     //-----------------------------SUMMARIZE A THREAD-------------------------//
     //------------------------------------------------------------------------//
 
-    else if (request.action === 'summarizeThread' && flagSummarizeThread) {
+    if (request.action === 'summarizeThread' && flagSummarizeThread) {
       const threadId = request.threadId;
 
       // Get the OAuth token (you might already have it)
@@ -221,7 +233,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     //--------------OPENING A POP ON CLICKING COMPOSE BUTTON------------------//
     //------------------------------------------------------------------------//
 
-    else if (request.action === 'showPopupInCompose' && flagComposeEmail) {
+    if (request.action === 'showPopupInCompose' && flagComposeEmail) {
+
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (tabs.length > 0 && tabs[0].url.includes("https://mail.google.com/")) {
           chrome.scripting.executeScript({
@@ -247,7 +260,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     //-------------------GENERATE AN EMAIL BASED ON PROMPT--------------------//
     //------------------------------------------------------------------------//
 
-    else if (request.action === "generateEmail" && flagComposeEmail) {
+    if (request.action === "generateEmail" && flagComposeEmail) {
       const prompt = `Compose an email using the following context. The first line should be the subject, followed by the body text. Do not include any additional text or format deviations before or after the subject line. 
 
     Context:
@@ -272,7 +285,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     //---------------------REFINE BODY TEXT OF AN EMAIL-----------------------//
     //------------------------------------------------------------------------//
 
-    else if (request.action === "refineBodyText" && flagRefineText) {
+    if (request.action === "refineBodyText" && flagRefineText) {
       const prompt = `Refine the following email for me. This should striclty contain the body of the email and other additional details are not needed. Not even the subject.:
     Email:
     ${request.text}`;
@@ -297,7 +310,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     //--------------------REFINE SUBJECT TEXT OF AN EMAIL---------------------//
     //------------------------------------------------------------------------//
 
-    else if (request.action === "refineSubjectText" && flagRefineText) {
+    if (request.action === "refineSubjectText" && flagRefineText) {
       const prompt = `Refine the following subject of an email for me. This should striclty contain only the subject of the email, any other text is prohibited :
     Subject of Email:
     ${request.text}`;
@@ -320,9 +333,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     //----------------HIGHLIGHT IMPORTANT PHRASES IN AN EMAILL----------------//
     //------------------------------------------------------------------------//
 
-    else if (request.action === 'highlightPhrases' && flagHighlightPhrase) {
+    if (request.action === 'highlightPhrases' && flagHighlightPhrase) {
       const threadId = request.threadId;
-
       
       highlightPhrases(threadId)
       .then(phrases => {
@@ -340,7 +352,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true; // Indicates an asynchronous response
     }
   });
+}catch(error){
+  console.error("Runtime error in message listener:", error);
+  sendResponse({ error: "An unexpected error occurred. Please try again." });
+}
 });
+
+
 
 chrome.runtime.onInstalled.addListener(() => {
   // Attempt to get the OAuth token when the extension is installed or launched
@@ -485,24 +503,49 @@ function getMessageText(message) {
   const parts = message.payload.parts || [];
   let messageText = '';
 
-  // Iterate through parts and find the plain text version
-  for (let part of parts) {
-    // Check for plain text MIME type
-    if (part.mimeType === 'text/plain') {
-      // Extract the body data and decode it
-      if (part.body.data) {
-        try {
-          messageText = atob(part.body.data.replace(/_/g, '/').replace(/-/g, '+'));
-        } catch (e) {
-          console.error('Failed to decode message content:', e);
-          messageText = 'Error decoding message content.';
-        }
-      }
-      break; // Only get the first text/plain part
+  // Helper to decode a part
+  function decodePart(part, isHtml = false) {
+    if (!part.body?.data) return null;
+    try {
+      const decodedData = decodeBase64(part.body.data);
+      return isHtml ? htmlToPlainText(decodedData) : decodedData;
+    } catch (e) {
+      console.error(`Failed to decode ${isHtml ? 'HTML' : 'plain text'}:`, e);
+      return null;
     }
   }
 
+  // Recursive function to traverse parts
+  function traverseParts(parts) {
+    for (let part of parts) {
+      if (part.mimeType === 'text/plain') {
+        const text = decodePart(part);
+        if (text) return text; // Return immediately if plain text is found
+      } else if (part.mimeType === 'text/html') {
+        const text = decodePart(part, true);
+        if (text) return text; // Return HTML if no plain text is found
+      } else if (part.parts) {
+        // Handle nested parts
+        const nestedText = traverseParts(part.parts);
+        if (nestedText) return nestedText;
+      }
+    }
+    return null;
+  }
+
+  // Extract text from parts
+  messageText = traverseParts(parts);
   return messageText || 'No message content found.';
+}
+
+function decodeBase64(data) {
+  return atob(data.replace(/-/g, '+').replace(/_/g, '/'));
+}
+
+function htmlToPlainText(html) {
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = html;
+  return tempDiv.innerText || tempDiv.textContent;
 }
 
 //------------------------------------------------------------------------//

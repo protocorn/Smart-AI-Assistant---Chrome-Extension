@@ -44,10 +44,13 @@ chrome.runtime.onMessage.addListener((request) => {
       subjectInput.value = request.subject;
       bodyInput.innerHTML = request.body;
     }
-  } else if (request.action === "displaySummary" && request.summary) {
+  } 
+  
+  if (request.action === "displaySummary" && request.summary) {
     displaySummaryPopup(request.summary);  // Call the popup display function for summaries
   }
-  else if (request.action === 'highlight') {
+
+  if (request.action === 'highlight') {
     const emailBody = document.querySelector('div.a3s.aiL');
     if (!emailBody) return;
 
