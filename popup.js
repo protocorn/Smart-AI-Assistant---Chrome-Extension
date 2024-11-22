@@ -6,6 +6,7 @@ document.addEventListener("DOMContentLoaded", function () {
     "refine_text",
     "summarize_thread",
     "highlight_phrase",
+    "categorize_email",
    //"translation_api",
   ];
 

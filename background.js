@@ -1,4 +1,4 @@
-chrome.runtime.onInstalled.addListener(function(details) {
+chrome.runtime.onInstalled.addListener(function (details) {
   const defaultFeatures = {
     "compose_email": true,
     "generate_reply": true,
@@ -6,10 +6,11 @@ chrome.runtime.onInstalled.addListener(function(details) {
     "summarize_thread": true,
     "highlight_phrase": true,
     "translation_api": true,
-   //"preferred_language": "en" // Default to English
+    "categorize_email": true,
+    //"preferred_language": "en" // Default to English
   };
 
-  chrome.storage.sync.get(Object.keys(defaultFeatures), function(items) {
+  chrome.storage.sync.get(Object.keys(defaultFeatures), function (items) {
     let newItems = {};
     for (let key in defaultFeatures) {
       if (items[key] === undefined) {
@@ -106,7 +107,7 @@ async function summarizeThread(threadId) {
 
     chrome.notifications.create({
       type: "basic",
-      iconUrl: "icon1.jpg",
+      iconUrl: "smart_assistant_icon.png",
       title: "Smart Gmail Assistant",
       message: "Failed to Summarize the thread",
       priority: 2
@@ -134,7 +135,7 @@ async function highlightPhrases(threadId) {
         });
       });
 
-      const messages = await getEmailMessage(token, threadId);
+      const messages = await getEmailThread(token, threadId);
       const emailContent = messages.map(msg =>
         `${msg.sender.senderName} (${msg.sender.senderEmail}): ${msg.snippet}`
       ).join("\n");
@@ -162,6 +163,39 @@ async function highlightPhrases(threadId) {
   }
 }
 
+async function categorizeEmails(threadId) {
+  const cacheKey = `category_${threadId}`;
+  const expirationMinutes = 12 * 60;
+  try {
+    const result = await getCachedData(cacheKey, async () => {
+      const token = await new Promise((resolve, reject) => {
+        chrome.identity.getAuthToken({ interactive: true }, (token) => {
+          if (chrome.runtime.lastError) {
+            reject(chrome.runtime.lastError);
+          } else {
+            resolve(token);
+          }
+        });
+      });
+      const { subject, senderName, senderEmail } = await getEmailSubjectAndSender(token, threadId);
+      const prompt = `Categorize the following email into two categories that are Urgent and Not Urgent. Strictly answer Urgent or Not Urgent. \n The email was sent by: ${senderName} and here is the subject of the email: ${subject}`;
+      const response = await processPrompt(prompt, 'Categorize Emails');
+      const isUrgent = /^\**urgent\**/i.test(response.trim());
+
+      if (isUrgent) {
+        const labelId = await createLabelIfNotExists(token, 'URGENT');
+        await addLabelToThread(token, threadId, labelId);
+      }
+
+      return { isUrgent, response };
+    }, expirationMinutes);
+    return result;
+  } catch (error) {
+    console.error("Error in Categorizing email:", error);
+    throw error;
+  }
+}
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 
@@ -174,6 +208,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       const flagRefineText = data.refine_text !== false;
       const flagSummarizeThread = data.summarize_thread !== false;
       const flagHighlightPhrase = data.highlight_phrase !== false;
+      const flagCategorizeEmail = data.categorize_email !== false;
 
       //------------------------------------------------------------------------//
       //--------------------GENERATE A REPLY FOR A THREAD-----------------------//
@@ -340,7 +375,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           if (response.localeCompare("not allowed", undefined, { sensitivity: 'base' }) === 0) {
             chrome.notifications.create({
               type: "basic",
-              iconUrl: "icon1.jpg",
+              iconUrl: "smart_assistant_icon.png",
               title: "Smart Gmail Assistant",
               message: "Cannot process the prompt as it is out of context",
               priority: 2
@@ -432,12 +467,37 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             sendResponse({ error: "Failed to highlight phrases." });
             chrome.notifications.create({
               type: "basic",
-              iconUrl: "icon1.jpg",
+              iconUrl: "smart_assistant_icon.png",
               title: "Smart Gmail Assistant",
               message: "Failed to highlight phrases",
               priority: 2
             });
           });
+        return true; // Indicates an asynchronous response
+      }
+
+      if (request.action === 'categorizeEmail') {
+        const threadId = request.threadId;
+
+        categorizeEmails(threadId)
+          .then(({ isUrgent, response }) => {
+            console.log(response);
+            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+              if (tabs.length > 0) {
+                /*chrome.tabs.sendMessage(tabs[0].id, {
+                  action: "displayCategory",
+                  thread: threadId,
+                  isUrgent: isUrgent
+                });*/
+              }
+            });
+            sendResponse({ success: true });
+          })
+          .catch(error => {
+            console.error("Error:", error);
+            sendResponse({ error: "Failed to Categorize Email." });
+          });
+
         return true; // Indicates an asynchronous response
       }
     });
@@ -531,8 +591,8 @@ async function getEmailThread(token, threadId) {
   }
 }
 
-async function getEmailMessage(token, threadId) {
-  const url = `https://gmail.googleapis.com/gmail/v1/users/me/threads/${threadId}`;
+async function getEmailSubjectAndSender(token, threadId) {
+  const url = `https://gmail.googleapis.com/gmail/v1/users/me/threads/${threadId}?fields=messages(payload/headers)`;
   try {
     const response = await fetch(url, {
       method: 'GET',
@@ -541,14 +601,32 @@ async function getEmailMessage(token, threadId) {
 
     if (!response.ok) throw new Error('Failed to fetch thread');
     const data = await response.json();
-    console.log(data);
 
-    // Return only the snippet of each message
-    return data.messages.map(msg => ({
-      sender: extractSenderInfo(msg),
-      snippet: getMessageText(msg)
-    }));
+    if (data.messages && data.messages.length > 0) {
+      const latestMessage = data.messages[0];
+      const headers = latestMessage.payload.headers;
+      const subjectHeader = headers.find(header => header.name.toLowerCase() === 'subject');
+      const fromHeader = headers.find(header => header.name.toLowerCase() === 'from');
 
+      const subject = subjectHeader ? subjectHeader.value : 'No subject';
+      let senderName = '';
+      let senderEmail = '';
+
+      if (fromHeader) {
+        const fromValue = fromHeader.value;
+        const matches = fromValue.match(/(.+?) <(.+)>/);
+        if (matches) {
+          senderName = matches[1];
+          senderEmail = matches[2];
+        } else {
+          senderEmail = fromValue;
+        }
+      }
+
+      return { subject, senderName, senderEmail };
+    }
+
+    return { subject: 'No messages found', senderName: '', senderEmail: '' };
   } catch (error) {
     console.error("Error fetching thread:", error);
     throw error;
@@ -635,6 +713,56 @@ function htmlToPlainText(html) {
   const tempDiv = document.createElement('div');
   tempDiv.innerHTML = html;
   return tempDiv.innerText || tempDiv.textContent;
+}
+async function createLabelIfNotExists(token, labelName) {
+  const url = 'https://gmail.googleapis.com/gmail/v1/users/me/labels';
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await response.json();
+    const existingLabel = data.labels.find(label => label.name === labelName);
+    if (existingLabel) {
+      return existingLabel.id;
+    } else {
+      const createResponse = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ name: labelName })
+      });
+      const newLabel = await createResponse.json();
+      return newLabel.id;
+    }
+  } catch (error) {
+    console.error("Error creating/fetching label:", error);
+    throw error;
+  }
+}
+
+async function addLabelToThread(token, threadId, labelId) {
+  const url = `https://gmail.googleapis.com/gmail/v1/users/me/threads/${threadId}/modify`;
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        addLabelIds: [labelId]
+      })
+    });
+    if (!response.ok) {
+      throw new Error('Failed to add label to thread');
+    }
+  } catch (error) {
+    console.error("Error adding label to thread:", error);
+    throw error;
+  }
 }
 
 //------------------------------------------------------------------------//

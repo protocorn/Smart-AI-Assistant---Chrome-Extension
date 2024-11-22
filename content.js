@@ -44,13 +44,13 @@ chrome.runtime.onMessage.addListener((request) => {
       subjectInput.value = request.subject;
       bodyInput.innerHTML = request.body;
     }
-  } 
+  }
 
   if (request.action === "displaySummary" && request.summary) {
     displaySummaryPopup(request.summary);  // Call the popup display function for summaries
   }
 
-  if(request.action === "changeSummaryButton"){
+  if (request.action === "changeSummaryButton") {
     const summarizeButton = document.getElementById('summarize-thread-button');
     summarizeButton.disabled = false;
     summarizeButton.textContent = 'Summarize Thread';
@@ -354,6 +354,16 @@ const emailobserver = new MutationObserver(() => {
   const emailRows = document.querySelectorAll('tr[jscontroller="ZdOxDb"]');
 
   emailRows.forEach(row => {
+    chrome.storage.sync.get(["categorize_email"], function (data) {
+      const flagCategorizeEmail = data.summarize_thread !== false;
+    if (!row.dataset.categorized && flagCategorizeEmail) {
+      const threadId = getThreadIdFromEmail(row);
+      if (threadId) {
+        chrome.runtime.sendMessage({ action: 'categorizeEmail', threadId: threadId });
+      }
+      row.dataset.categorized = 'true';
+    }
+  });
     row.addEventListener('click', () => {
       chrome.storage.sync.get(["summarize_thread", "highlight_phrases"], function (data) {
         const flagSummarizeThread = data.summarize_thread !== false;
@@ -501,9 +511,8 @@ function attachAIbuttons() {
       chrome.storage.sync.get(["compose_email"], function (data) {
         const flagComposeEmail = data.compose_email !== false;
         if (flagComposeEmail) {
-          if(!document.getElementById('compose-ui-container'))
-          {
-          chrome.runtime.sendMessage({ action: 'showPopupInCompose' });
+          if (!document.getElementById('compose-ui-container')) {
+            chrome.runtime.sendMessage({ action: 'showPopupInCompose' });
           }
         }
       });

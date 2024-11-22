@@ -129,6 +129,7 @@
   .dropdown {
     position: relative;
     display: inline-block;
+    margin-left: 20%;
   }
   .dropdown-content {
     display: none;
