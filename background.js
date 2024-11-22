@@ -476,7 +476,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true; // Indicates an asynchronous response
       }
 
-      if (request.action === 'categorizeEmail') {
+      if (request.action === 'categorizeEmail' && flagCategorizeEmail) {
         const threadId = request.threadId;
 
         categorizeEmails(threadId)
