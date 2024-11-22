@@ -6,14 +6,14 @@ document.addEventListener("DOMContentLoaded", function () {
     "refine_text",
     "summarize_thread",
     "highlight_phrase",
-    "translation_api", // Added Translation API
+   //"translation_api",
   ];
 
   // Load saved states from chrome.storage.sync
   chrome.storage.sync.get(features.concat("preferred_language"), function (data) {
     features.forEach((feature) => {
       const toggleElement = document.getElementById(`${feature}-toggle`);
-      if (data[feature]) {
+      if (data[feature]!=false) {
         toggleElement.classList.add("toggle-on");
       }
     });

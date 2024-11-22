@@ -1,3 +1,27 @@
+chrome.runtime.onInstalled.addListener(function(details) {
+  const defaultFeatures = {
+    "compose_email": true,
+    "generate_reply": true,
+    "refine_text": true,
+    "summarize_thread": true,
+    "highlight_phrase": true,
+    "translation_api": true,
+   //"preferred_language": "en" // Default to English
+  };
+
+  chrome.storage.sync.get(Object.keys(defaultFeatures), function(items) {
+    let newItems = {};
+    for (let key in defaultFeatures) {
+      if (items[key] === undefined) {
+        newItems[key] = defaultFeatures[key];
+      }
+    }
+    if (Object.keys(newItems).length > 0) {
+      chrome.storage.sync.set(newItems);
+    }
+  });
+});
+
 function setCachedData(key, data, expirationMinutes) {
   try {
     const expirationMS = expirationMinutes * 60 * 1000;
@@ -262,16 +286,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         - Key decisions or next steps 
         - Important questions asked or information provided: ${emailContent}`;
 
-        const summarizer = await ai.summarizer.create();
-        const summary = await summarizer.summarize(prompt);
-        summarizer.destroy();
+          const summarizer = await ai.summarizer.create();
+          const summary = await summarizer.summarize(prompt);
+          summarizer.destroy();
 
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-          if (tabs.length > 0) {
-            chrome.tabs.sendMessage(tabs[0].id, { action: "displaySummary", summary: summary });
-          }
-        });
-        sendResponse({ success: true });
+          chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs.length > 0) {
+              chrome.tabs.sendMessage(tabs[0].id, { action: "displaySummary", summary: summary });
+            }
+          });
+          sendResponse({ success: true });
         });
         return true; // Indicates an asynchronous response
       }
@@ -313,8 +337,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     Here is the Context:
     ${request.prompt}`;
         processPrompt(prompt, 'Generate Email').then(response => {
-          if(response.localeCompare("not allowed", undefined, { sensitivity: 'base' }) === 0)
-          {
+          if (response.localeCompare("not allowed", undefined, { sensitivity: 'base' }) === 0) {
             chrome.notifications.create({
               type: "basic",
               iconUrl: "icon1.jpg",
@@ -323,16 +346,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
               priority: 2
             });
           }
-          else{
-          const subject = response.split("\n")[0];
-          const body = response.split("\n").slice(1).join("\n");
-          // Send subject and body back to content.js for direct insertion
-          chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            if (tabs.length > 0) {
-              chrome.tabs.sendMessage(tabs[0].id, { action: "fillEmail", subject, body });
-            }
-          });
-        }
+          else {
+            const subject = response.split("\n")[0];
+            const body = response.split("\n").slice(1).join("\n");
+            // Send subject and body back to content.js for direct insertion
+            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+              if (tabs.length > 0) {
+                chrome.tabs.sendMessage(tabs[0].id, { action: "fillEmail", subject, body });
+              }
+            });
+          }
 
           sendResponse({ success: true });
         });

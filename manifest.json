@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "AI Email Assistant",
-  "version": "3.6",
+  "name": "Smart Gmail Assistant",
+  "version": "1.0",
   "description": "A Chrome extension that helps you compose emails using AI.",
   "permissions": [
     "activeTab",
@@ -21,7 +21,19 @@
     "service_worker": "background.js"
   },
   "action": {
-    "default_popup": "popup.html"
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "smart_assistant_icon.png",
+      "32": "smart_assistant_icon.png",
+      "48": "smart_assistant_icon.png",
+      "128": "smart_assistant_icon.png"
+    }
+  },
+  "icons": {
+    "16": "smart_assistant_icon.png",
+    "32": "smart_assistant_icon.png",
+    "48": "smart_assistant_icon.png",
+    "128": "smart_assistant_icon.png"
   },
   "content_scripts": [
     {
