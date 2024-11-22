@@ -355,7 +355,7 @@ const emailobserver = new MutationObserver(() => {
 
   emailRows.forEach(row => {
     chrome.storage.sync.get(["categorize_email"], function (data) {
-      const flagCategorizeEmail = data.summarize_thread !== false;
+      const flagCategorizeEmail = data.categorize_email !== false;
     if (!row.dataset.categorized && flagCategorizeEmail) {
       const threadId = getThreadIdFromEmail(row);
       if (threadId) {
