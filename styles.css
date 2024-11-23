@@ -161,19 +161,19 @@
   }
   .action-button {
     padding: 10px 20px;
-    background-color: #1a73e8;
-    color: white;
+    background-color: #89c2da;
+    color: #444249;
     border: none;
-    border-radius: 4px;
+    border-radius: 20px;
     cursor: pointer;
     font-size: 14px;
     transition: background-color 0.3s;
   }
   
   .action-button:hover {
-    background-color: #155db1;
+    background-color: #4b7a8d;
   }
   
   .action-button:active {
-    background-color: #12508f;
+    background-color: #89c2da;
   }
