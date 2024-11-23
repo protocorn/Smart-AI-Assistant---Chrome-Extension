@@ -44,6 +44,9 @@ chrome.runtime.onMessage.addListener((request) => {
       subjectInput.value = request.subject;
       bodyInput.innerHTML = request.body;
     }
+    const generateButton = document.getElementById('generate-email-button');
+    generateButton.textContent= 'Generate Reply';
+    generateButton.disabled= false;
   }
 
   if (request.action === "displaySummary" && request.summary) {
@@ -235,7 +238,7 @@ function attachGenerateEmailButtonToReplyBox(currentThreadId) {
 
         const generateButton = document.createElement('button');
         generateButton.id = 'generate-email-button';
-        generateButton.textContent = 'Generate Email';
+        generateButton.textContent = 'Generate Reply';
         generateButton.style.cssText = `
           position: sticky;
           top: ${replyBox.offsetTop + 5}px;
@@ -254,6 +257,8 @@ function attachGenerateEmailButtonToReplyBox(currentThreadId) {
         //----------------GENERATE REPLY BUTTON CLICKED----------------//
 
         generateButton.addEventListener('click', () => {
+          generateButton.textContent= 'Generating Reply...';
+          generateButton.disabled= true;
           // Send the body text to the Prompt API
           chrome.runtime.sendMessage({
             action: 'getThreadAndGenerateResponse',
@@ -267,8 +272,8 @@ function attachGenerateEmailButtonToReplyBox(currentThreadId) {
         //----------------REFINE REPLY BUTTON----------------//
 
         const refineButton = document.createElement('button');
-        refineButton.id = 'refine-body-button';
-        refineButton.textContent = 'Refine Body';
+        refineButton.id = 'refine-reply-button';
+        refineButton.textContent = 'Refine Reply';
         refineButton.style.cssText = `
             position: sticky;
             top: ${replyBox.offsetTop + 5}px;
@@ -288,6 +293,8 @@ function attachGenerateEmailButtonToReplyBox(currentThreadId) {
           const bodyText = replyBox.innerText;
           console.log(bodyText)
           if (bodyText) {
+            refineButton.textContent = "Refining Reply..."
+            refineButton.disabled=true;
             // Send the body text to the Prompt API
             chrome.runtime.sendMessage({
               action: 'refineBodyText',
@@ -480,6 +487,8 @@ function attachAIbuttons() {
     refineButton.addEventListener('click', () => {
       const bodyText = composeBox.innerText;
       if (bodyText) {
+        refineButton.textContent="Refining Body...";
+        refineButton.disabled=true;
         // Send the body text to the Prompt API
         chrome.runtime.sendMessage({
           action: 'refineBodyText',
@@ -496,6 +505,8 @@ function attachAIbuttons() {
     refineButton2.addEventListener('click', () => {
       const subText = subjectInput.value;
       if (subText) {
+        refineButton2.textContent="Refining Subject...";
+        refineButton2.disabled=true;
         // Send the subject text to the Prompt API
         chrome.runtime.sendMessage({
           action: 'refineSubjectText',
@@ -532,11 +543,22 @@ chrome.runtime.onMessage.addListener((request) => {
     if (composeBox) {
       composeBox.innerHTML = request.refinedText; // Replace with refined content
     }
+    const refineReplyButton = document.getElementById('refine-reply-button');
+    const refineBodyButton = document.getElementById('refine-body-button');
+    refineReplyButton.textContent="Refine Reply";
+    refineReplyButton.disabled=false;
+
+    refineBodyButton.textContent="Refine Body";
+    refineBodyButton.disabled=false;
   }
   else if (request.action === "fillRefinedSub" && request.refinedText) {
     const subjectInput = document.querySelector('input[name="subjectbox"]');
     if (subjectInput) {
       subjectInput.value = request.refinedText; // Replace with refined content
     }
+    const refineSubButton = document.getElementById('refine-subject-button');
+
+    refineSubButton.textContent="Refine Subject";
+    refineSubButton.disabled=false;
   }
 });

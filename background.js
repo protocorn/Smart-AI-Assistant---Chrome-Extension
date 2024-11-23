@@ -6,7 +6,7 @@ chrome.runtime.onInstalled.addListener(function (details) {
     "summarize_thread": true,
     "highlight_phrase": true,
     "translation_api": true,
-    "categorize_email": true,
+    "categorize_email": false,
     //"preferred_language": "en" // Default to English
   };
 
@@ -452,7 +452,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
       if (request.action === 'highlightPhrases' && flagHighlightPhrase) {
         const threadId = request.threadId;
-
+        chrome.storage.sync.set({ ['categorize_email']: false }, function () {
+          console.log("");
+        });
+        
         highlightPhrases(threadId)
           .then(phrases => {
             chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -481,7 +484,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
         categorizeEmails(threadId)
           .then(({ isUrgent, response }) => {
+            if(isUrgent){
             console.log(response);
+            }
             chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
               if (tabs.length > 0) {
                 /*chrome.tabs.sendMessage(tabs[0].id, {
@@ -821,7 +826,7 @@ function injectComposeUI() {
         generateButton.disabled = false;
         promptInput.value = ""; // Clear the prompt
       } else {
-        alert("An error occurred while generating the email.");
+        //alert("An error occurred while generating the email.");
         generateButton.textContent = "Generate Email";
         generateButton.disabled = false;
       }

@@ -46,6 +46,9 @@ document.addEventListener("DOMContentLoaded", function () {
   features.forEach((feature) => {
     const toggleElement = document.getElementById(`${feature}-toggle`);
     toggleElement.addEventListener("click", function () {
+      if(feature=='categorize_email'){
+        saveToggleState(feature,true);
+      }
       const isOn = toggleElement.classList.toggle("toggle-on");
       saveToggleState(feature, isOn);
     });

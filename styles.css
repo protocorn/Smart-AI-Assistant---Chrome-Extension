@@ -159,3 +159,21 @@
   .dropdown:hover .dropdown-content {
     display: block;
   }
+  .action-button {
+    padding: 10px 20px;
+    background-color: #1a73e8;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+  }
+  
+  .action-button:hover {
+    background-color: #155db1;
+  }
+  
+  .action-button:active {
+    background-color: #12508f;
+  }
