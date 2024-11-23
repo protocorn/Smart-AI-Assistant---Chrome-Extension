@@ -45,8 +45,10 @@ chrome.runtime.onMessage.addListener((request) => {
       bodyInput.innerHTML = request.body;
     }
     const generateButton = document.getElementById('generate-email-button');
+    if(generateButton){
     generateButton.textContent= 'Generate Reply';
     generateButton.disabled= false;
+    }
   }
 
   if (request.action === "displaySummary" && request.summary) {
@@ -55,8 +57,10 @@ chrome.runtime.onMessage.addListener((request) => {
 
   if (request.action === "changeSummaryButton") {
     const summarizeButton = document.getElementById('summarize-thread-button');
+    if(summarizeButton){
     summarizeButton.disabled = false;
     summarizeButton.textContent = 'Summarize Thread';
+    }
   }
 
   if (request.action === 'highlight') {
@@ -545,11 +549,14 @@ chrome.runtime.onMessage.addListener((request) => {
     }
     const refineReplyButton = document.getElementById('refine-reply-button');
     const refineBodyButton = document.getElementById('refine-body-button');
+    if(refineReplyButton){
     refineReplyButton.textContent="Refine Reply";
     refineReplyButton.disabled=false;
-
+    }
+    if(refineBodyButton){
     refineBodyButton.textContent="Refine Body";
     refineBodyButton.disabled=false;
+    }
   }
   else if (request.action === "fillRefinedSub" && request.refinedText) {
     const subjectInput = document.querySelector('input[name="subjectbox"]');
@@ -558,7 +565,9 @@ chrome.runtime.onMessage.addListener((request) => {
     }
     const refineSubButton = document.getElementById('refine-subject-button');
 
+    if(refineSubButton){
     refineSubButton.textContent="Refine Subject";
     refineSubButton.disabled=false;
+    }
   }
 });
