@@ -259,7 +259,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                   }
                 });
                 sendResponse({ success: true });
-              })();
+              });
             });
 
         });
@@ -455,7 +455,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         chrome.storage.sync.set({ ['categorize_email']: false }, function () {
           console.log("");
         });
-        
+
         highlightPhrases(threadId)
           .then(phrases => {
             chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
