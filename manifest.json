@@ -13,9 +13,7 @@
     "notifications"
   ],
   "host_permissions": [
-    "https://mail.google.com/*",
-    "http://*/*",
-    "https://*/*"
+    "https://mail.google.com/*"
   ],
   "background": {
     "service_worker": "background.js"
