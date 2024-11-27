@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Smart Gmail Assistant",
-  "version": "1.0",
+  "version": "1.1",
   "description": "Supercharge your Gmail with AI-powered features like smart replies, email summarization and more.",
   "permissions": [
     "activeTab",
