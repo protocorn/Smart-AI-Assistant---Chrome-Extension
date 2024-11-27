@@ -398,6 +398,7 @@ const emailobserver = new MutationObserver(() => {
 
 emailobserver.observe(document.body, { childList: true, subtree: true });
 
+
 //------------------------------------------------------------------------//
 //-------------------FUNCTION TO ATTACH REFINE BUTTONS--------------------//
 //------------------------------------------------------------------------//

@@ -58,8 +58,6 @@ function getCachedData(key, fetchFunction, expirationMinutes) {
   });
 }
 
-// In your background.js file
-
 async function summarizeThread(threadId) {
   const cacheKey = `summary_${threadId}`;
   const expirationMinutes = 60; // Cache summaries for 1 hour
@@ -452,9 +450,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
       if (request.action === 'highlightPhrases' && flagHighlightPhrase) {
         const threadId = request.threadId;
-        chrome.storage.sync.set({ ['categorize_email']: false }, function () {
-          console.log("");
-        });
 
         highlightPhrases(threadId)
           .then(phrases => {
@@ -481,12 +476,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
       if (request.action === 'categorizeEmail' && flagCategorizeEmail) {
         const threadId = request.threadId;
-
+       
         categorizeEmails(threadId)
           .then(({ isUrgent, response }) => {
             if(isUrgent){
             console.log(response);
             }
+
             chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
               if (tabs.length > 0) {
                 /*chrome.tabs.sendMessage(tabs[0].id, {
@@ -769,6 +765,7 @@ async function addLabelToThread(token, threadId, labelId) {
     throw error;
   }
 }
+
 
 //------------------------------------------------------------------------//
 //---------------------------UI OF COMPOSE POPUP--------------------------//
