@@ -40,4 +40,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 This project is licensed under the MIT License.
 
 ## Contact
-For any queries or suggestions, please open an issue in the GitHub repository or contact me through my [email](chordiasahil24@gmail.com).
+For any queries or suggestions, please open an issue in the GitHub repository or contact me through my [email](mailto:chordiasahil24@gmail.com).
