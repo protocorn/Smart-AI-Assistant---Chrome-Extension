@@ -28,6 +28,8 @@ Smart AI Assistant is a powerful Chrome extension that enhances your Gmail exper
 6. Update the manifest.json file:
  - Replace the placeholder Client ID with your newly created OAuth 2.0 Client ID.
 
+## Demonstration Video
+(https://www.youtube.com/watch?v=OqPWf4-73D4)
 
 ## Security and Privacy
 - The extension uses OAuth 2.0 for authentication with Gmail.
