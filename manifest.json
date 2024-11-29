@@ -40,7 +40,7 @@
     }
   ],
   "oauth2": {
-    "client_id": "496624467603-ub215esr0vep74g14lf6svk4imq3cjjr.apps.googleusercontent.com",
+    "client_id": "PLACEHOLDER FOR CLIENT ID --  REPLACE THIS WITH YOUR ACTUAL CLIENT ID", 
     "scopes": [
       "https://www.googleapis.com/auth/gmail.readonly",
       "https://www.googleapis.com/auth/gmail.send",
