@@ -1,6 +1,7 @@
 # Smart AI Assistant - Chrome Extension
 
 Smart AI Assistant is a powerful Chrome extension that enhances your Gmail experience with AI-powered features for email composition, refinement, and management.
+[click here](https://chromewebstore.google.com/detail/smart-gmail-assistant/ieccgcgkaihnjkocfaobaamapolhjckb) to add the extension to chrome.
 
 ## Features
 - **AI-Powered Email Composition**: Generate entire emails based on prompts.
